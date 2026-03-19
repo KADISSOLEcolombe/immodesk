@@ -2,6 +2,10 @@ export interface Property {
   id: string;
   title: string;
   description: string;
+  owner: {
+    name: string;
+    phone: string;
+  };
   address: {
     street: string;
     city: string;
@@ -25,6 +29,10 @@ export const mockProperties: Property[] = [
     id: 'prop-1',
     title: 'Appartement meublé à Bè',
     description: 'Appartement rénové, idéalement situé à quelques minutes du centre de Lomé.',
+    owner: {
+      name: 'Nora Agbeko',
+      phone: '90 00 00 00',
+    },
     address: {
       street: 'Avenue de la Libération, Bè',
       city: 'Lomé',
@@ -50,6 +58,10 @@ export const mockProperties: Property[] = [
     id: 'prop-2',
     title: 'Studio moderne proche université',
     description: 'Studio compact et sécurisé, adapté aux étudiants et jeunes actifs.',
+    owner: {
+      name: 'David Tetteh',
+      phone: '91 23 45 67',
+    },
     address: {
       street: 'Quartier Kpota',
       city: 'Kara',
@@ -75,6 +87,10 @@ export const mockProperties: Property[] = [
     id: 'prop-3',
     title: 'Maison familiale avec cour',
     description: 'Grande maison dans un environnement calme, parfaite pour une famille.',
+    owner: {
+      name: 'Sena Kossi',
+      phone: '92 34 56 78',
+    },
     address: {
       street: 'Route de Tchamba',
       city: 'Sokodé',
@@ -100,6 +116,10 @@ export const mockProperties: Property[] = [
     id: 'prop-4',
     title: 'T2 proche du marché',
     description: 'Appartement avec balcon, commerces et transport à proximité.',
+    owner: {
+      name: 'Nora Agbeko',
+      phone: '90 00 00 00',
+    },
     address: {
       street: 'Quartier Nyivé',
       city: 'Kpalimé',
@@ -125,6 +145,10 @@ export const mockProperties: Property[] = [
     id: 'prop-5',
     title: 'Villa duplex moderne',
     description: 'Beaux volumes, finitions modernes et quartier résidentiel.',
+    owner: {
+      name: 'David Tetteh',
+      phone: '91 23 45 67',
+    },
     address: {
       street: 'Avenue des Palmiers',
       city: 'Atakpamé',
@@ -150,6 +174,10 @@ export const mockProperties: Property[] = [
     id: 'prop-6',
     title: 'Immeuble en cours de rénovation',
     description: 'Projet de rénovation en cours dans une zone en plein développement.',
+    owner: {
+      name: 'Sena Kossi',
+      phone: '92 34 56 78',
+    },
     address: {
       street: 'Route nationale N°1',
       city: 'Tsévié',

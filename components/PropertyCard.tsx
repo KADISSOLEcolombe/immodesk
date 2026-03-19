@@ -43,7 +43,8 @@ export default function PropertyCard({ property }: PropertyCardProps) {
   const status = statusStyles[property.status];
 
   return (
-    <article className="group overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl">
+    <article className="group overflow-hidden rounded-2xl border border-black/5 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl relative">
+      <Link href={`/properties/${property.id}`} className="absolute inset-0 z-10" aria-label={`Voir détails de ${property.title}`} />
       <div className="relative aspect-[16/10] w-full overflow-hidden">
         <Image
           src={mainImage}
@@ -87,12 +88,9 @@ export default function PropertyCard({ property }: PropertyCardProps) {
           </div>
         </div>
 
-        <Link
-          href={`/properties/${property.id}`}
-          className="inline-flex w-full items-center justify-center rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 sm:w-auto"
-        >
+        <div className="inline-flex w-full items-center justify-center rounded-xl bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 sm:w-auto relative z-20 pointer-events-none">
           Voir détails
-        </Link>
+        </div>
       </div>
     </article>
   );

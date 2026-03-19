@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronUp, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, SlidersHorizontal, X, ArrowLeft } from 'lucide-react';
 import PropertyCard from '@/components/PropertyCard';
 import { mockProperties, Property } from '@/data/properties';
+import Link from 'next/link';
 
 export default function PropertiesPage() {
   const [search, setSearch] = useState('');
@@ -66,20 +67,28 @@ export default function PropertiesPage() {
   return (
     <div className="mx-auto w-full max-w-7xl">
       {/* En-tête */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">Biens immobiliers</h1>
-          <p className="mt-1 text-sm text-zinc-500">
-            {filteredProperties.length} résultat{filteredProperties.length > 1 ? 's' : ''}
-            {activeFilterCount > 0 && (
-              <span className="ml-2 inline-flex items-center rounded-full bg-zinc-900 px-2 py-0.5 text-xs font-semibold text-white">
-                {activeFilterCount} filtre{activeFilterCount > 1 ? 's' : ''}
-              </span>
-            )}
-          </p>
-        </div>
+      <div className="mb-6">
+        <Link 
+          href="/" 
+          className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900 transition-colors mb-4"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Retour à l'accueil
+        </Link>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">Biens immobiliers</h1>
+            <p className="mt-1 text-sm text-zinc-500">
+              {filteredProperties.length} résultat{filteredProperties.length > 1 ? 's' : ''}
+              {activeFilterCount > 0 && (
+                <span className="ml-2 inline-flex items-center rounded-full bg-zinc-900 px-2 py-0.5 text-xs font-semibold text-white">
+                  {activeFilterCount} filtre{activeFilterCount > 1 ? 's' : ''}
+                </span>
+              )}
+            </p>
+          </div>
 
-        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mr-16">
           {activeFilterCount > 0 && (
             <button
               type="button"
@@ -109,75 +118,108 @@ export default function PropertiesPage() {
           </button>
         </div>
       </div>
+      </div>
 
       {/* Panneau de filtres (collapsible) */}
       {showFilters && (
-        <section className="mb-6 rounded-2xl border border-black/5 bg-white p-4 shadow-sm sm:p-5">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
-              Recherche (ville, titre)
-              <input
-                type="text"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Ex: Lomé ou Villa"
-                className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400"
-              />
-            </label>
-
-            <div className="grid grid-cols-2 gap-2">
-              <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
-                Prix min
+        <section className="mb-8 rounded-3xl border border-zinc-100 bg-white p-6 shadow-xl shadow-zinc-200/50 transition-all duration-300 sm:p-8">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
+            {/* Recherche */}
+            <div className="space-y-3">
+              <label className="text-sm font-semibold text-zinc-900">Recherche</label>
+              <div className="relative group">
                 <input
-                  type="number"
-                  min={0}
-                  value={minPrice}
-                  onChange={(event) => setMinPrice(event.target.value)}
-                  placeholder="0"
-                  className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400"
+                  type="text"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Ville, quartier, type..."
+                  className="w-full h-12 rounded-2xl border border-zinc-200 bg-zinc-50 pl-11 pr-4 text-sm text-zinc-900 outline-none transition-all focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/10 placeholder:text-zinc-400"
                 />
-              </label>
-              <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
-                Prix max
-                <input
-                  type="number"
-                  min={0}
-                  value={maxPrice}
-                  onChange={(event) => setMaxPrice(event.target.value)}
-                  placeholder="2000"
-                  className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400"
-                />
-              </label>
+                <svg
+                  className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 group-focus-within:text-zinc-900 transition-colors"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
             </div>
 
-            <fieldset className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
-              <legend className="mb-1">Statut</legend>
-              {(['vacant', 'rented', 'maintenance'] as Property['status'][]).map((s) => (
-                <label key={s} className="inline-flex items-center gap-2 text-sm font-normal text-zinc-600">
+            {/* Prix */}
+            <div className="space-y-3">
+              <label className="text-sm font-semibold text-zinc-900">Budget (FCFA)</label>
+              <div className="flex items-center gap-3">
+                <div className="relative w-full">
                   <input
-                    type="checkbox"
-                    checked={selectedStatuses.includes(s)}
-                    onChange={() => toggleStatus(s)}
-                    className="h-4 w-4 rounded border-zinc-300"
+                    type="number"
+                    min={0}
+                    value={minPrice}
+                    onChange={(event) => setMinPrice(event.target.value)}
+                    placeholder="Min"
+                    className="w-full h-12 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 text-sm text-zinc-900 outline-none transition-all focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/10 placeholder:text-zinc-400"
                   />
-                  {s === 'vacant' ? 'Disponible' : s === 'rented' ? 'Loué' : 'Maintenance'}
-                </label>
-              ))}
-            </fieldset>
+                </div>
+                <div className="h-px w-4 bg-zinc-300"></div>
+                <div className="relative w-full">
+                  <input
+                    type="number"
+                    min={0}
+                    value={maxPrice}
+                    onChange={(event) => setMaxPrice(event.target.value)}
+                    placeholder="Max"
+                    className="w-full h-12 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 text-sm text-zinc-900 outline-none transition-all focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/10 placeholder:text-zinc-400"
+                  />
+                </div>
+              </div>
+            </div>
 
-            <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
-              Nombre de pièces
-              <select
-                value={roomsFilter}
-                onChange={(event) => setRoomsFilter(event.target.value)}
-                className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400"
-              >
-                <option value="all">Toutes</option>
-                {['1', '2', '3', '4', '5+'].map((v) => (
-                  <option key={v} value={v}>{v}</option>
-                ))}
-              </select>
-            </label>
+            {/* Statut */}
+            <div className="space-y-3">
+              <label className="text-sm font-semibold text-zinc-900">Disponibilité</label>
+              <div className="flex flex-wrap gap-2">
+                {(['vacant', 'rented', 'maintenance'] as Property['status'][]).map((s) => {
+                  const isSelected = selectedStatuses.includes(s);
+                  const labels = { vacant: 'Disponible', rented: 'Loué', maintenance: 'Maintenance' };
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => toggleStatus(s)}
+                      className={`inline-flex h-9 items-center rounded-xl border px-3 text-xs font-medium transition-all ${
+                        isSelected
+                          ? 'border-zinc-900 bg-zinc-900 text-white shadow-md shadow-zinc-900/20'
+                          : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'
+                      }`}
+                    >
+                      {labels[s]}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Pièces */}
+            <div className="space-y-3">
+              <label className="text-sm font-semibold text-zinc-900">Pièces</label>
+              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                {['all', '1', '2', '3', '4', '5+'].map((v) => {
+                  const isSelected = roomsFilter === v;
+                  return (
+                    <button
+                      key={v}
+                      onClick={() => setRoomsFilter(v)}
+                      className={`flex h-10 min-w-10 items-center justify-center rounded-full border text-sm font-medium transition-all ${
+                        isSelected
+                          ? 'border-zinc-900 bg-zinc-900 text-white shadow-md shadow-zinc-900/20'
+                          : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'
+                      }`}
+                    >
+                      {v === 'all' ? 'Tout' : v}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </section>
       )}
