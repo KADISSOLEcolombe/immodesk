@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { AuthService } from '@/lib/auth-service';
 
 export type NotificationCategory = 'payment' | 'message' | 'system';
 
@@ -22,8 +23,11 @@ type NotificationContextValue = {
   unreadCount: number;
   addNotification: (payload: NotificationInput) => void;
   markAllAsRead: () => void;
+  refreshNotifications: () => Promise<void>;
+  isLoading: boolean;
 };
 
+// Notifications initiales pour démo (seront remplacées par le backend)
 const initialNotifications: AppNotification[] = [
   {
     id: 'n-init-1',
@@ -47,6 +51,7 @@ const STORAGE_KEY = 'immodesk.notifications.v1';
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<AppNotification[]>(initialNotifications);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     try {
@@ -75,6 +80,29 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications));
   }, [notifications, isHydrated]);
+
+  // Rafraîchir les notifications depuis le backend (quand l'API sera disponible)
+  const refreshNotifications = async () => {
+    if (!AuthService.isAuthenticated()) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // TODO: Implémenter l'appel API quand le endpoint notifications sera disponible
+      // const response = await apiClient.get('/notifications/');
+      // if (response.success && response.data) {
+      //   setNotifications(response.data);
+      // }
+      
+      // Pour l'instant, on garde les notifications locales
+      console.log('Rafraîchissement des notifications (backend endpoint pas encore disponible)');
+    } catch (error) {
+      console.error('Erreur lors du rafraîchissement des notifications:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const addNotification = (payload: NotificationInput) => {
     const now = new Date();
@@ -110,8 +138,10 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       unreadCount,
       addNotification,
       markAllAsRead,
+      refreshNotifications,
+      isLoading,
     };
-  }, [notifications]);
+  }, [notifications, isLoading]);
 
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
 }

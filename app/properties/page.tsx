@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, SlidersHorizontal, X, ArrowLeft } from 'lucide-react';
 import PropertyCard from '@/components/PropertyCard';
 import { mockProperties, Property } from '@/data/properties';
 import Link from 'next/link';
+import { PatrimoineService } from '@/lib/patrimoine-service';
+import { Bien } from '@/types/api';
 
 export default function PropertiesPage() {
   const [search, setSearch] = useState('');
@@ -13,13 +15,74 @@ export default function PropertiesPage() {
   const [selectedStatuses, setSelectedStatuses] = useState<Property['status'][]>([]);
   const [roomsFilter, setRoomsFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [properties, setProperties] = useState<Bien[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [useBackend, setUseBackend] = useState(false);
+
+  useEffect(() => {
+    const loadProperties = async () => {
+      try {
+        setIsLoading(true);
+        const response = await PatrimoineService.getBiensPublic();
+        
+        if (response.success && response.data) {
+          setProperties(response.data);
+          setUseBackend(true);
+        } else {
+          // Fallback vers les données mockées si le backend n'est pas disponible
+          console.log('Backend non disponible, utilisation des données mockées');
+          setUseBackend(false);
+        }
+      } catch (error) {
+        console.log('Backend non disponible, utilisation des données mockées:', error);
+        setUseBackend(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProperties();
+  }, []);
+
+  // Convertir les données du backend vers le format Property pour le filtrage
+  const convertedProperties = useMemo(() => {
+    if (useBackend) {
+      return properties.map((bien): Property => ({
+        id: bien.id,
+        title: bien.titre,
+        description: bien.description,
+        owner: {
+          name: `Propriétaire ${bien.proprietaire}`,
+          phone: 'Non disponible',
+        },
+        address: {
+          street: bien.adresse_complete,
+          city: 'Non spécifiée',
+          postalCode: 'Non spécifié',
+        },
+        financial: {
+          rentAmount: bien.loyer_mensuel,
+          chargesAmount: bien.charges_mensuelles,
+        },
+        features: {
+          surface: bien.surface,
+          rooms: bien.nombre_pieces,
+          bedrooms: bien.nombre_chambres,
+        },
+        images: bien.images,
+        status: bien.statut as Property['status'],
+      }));
+    }
+    return mockProperties;
+  }, [properties, useBackend]);
 
   const filteredProperties = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
     const parsedMin = minPrice ? Number(minPrice) : null;
     const parsedMax = maxPrice ? Number(maxPrice) : null;
 
-    return mockProperties.filter((property) => {
+    return convertedProperties.filter((property) => {
       const matchesSearch =
         normalizedSearch.length === 0 ||
         property.title.toLowerCase().includes(normalizedSearch) ||
@@ -40,7 +103,7 @@ export default function PropertiesPage() {
 
       return matchesSearch && matchesMinPrice && matchesMaxPrice && matchesStatus && matchesRooms;
     });
-  }, [search, minPrice, maxPrice, selectedStatuses, roomsFilter]);
+  }, [search, minPrice, maxPrice, selectedStatuses, roomsFilter, convertedProperties]);
 
   const toggleStatus = (status: Property['status']) => {
     setSelectedStatuses((current) =>
@@ -64,6 +127,17 @@ export default function PropertiesPage() {
     roomsFilter !== 'all',
   ].filter(Boolean).length;
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-zinc-900 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-zinc-600">Chargement des biens...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-7xl">
       {/* En-tête */}
@@ -83,6 +157,11 @@ export default function PropertiesPage() {
               {activeFilterCount > 0 && (
                 <span className="ml-2 inline-flex items-center rounded-full bg-zinc-900 px-2 py-0.5 text-xs font-semibold text-white">
                   {activeFilterCount} filtre{activeFilterCount > 1 ? 's' : ''}
+                </span>
+              )}
+              {useBackend && (
+                <span className="ml-2 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+                  Données réelles
                 </span>
               )}
             </p>

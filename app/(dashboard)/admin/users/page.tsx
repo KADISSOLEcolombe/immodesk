@@ -29,13 +29,14 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<ManagedUser[]>(initialUsers);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [role, setRole] = useState<UserRole>('tenant');
   const [userFeedback, setUserFeedback] = useState('');
 
   const createUser = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    if (!fullName.trim() || !email.trim()) return;
+    if (!fullName.trim() || !email.trim() || !password.trim()) return;
 
     const newUser: ManagedUser = {
       id: `u-${Date.now()}`,
@@ -54,6 +55,7 @@ export default function AdminUsersPage() {
 
     setFullName('');
     setEmail('');
+    setPassword('');
     setRole('tenant');
   };
 
@@ -111,6 +113,17 @@ export default function AdminUsersPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="utilisateur@immodesk.tg"
+              className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 sm:col-span-2">
+            Mot de passe
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Définir un mot de passe"
               className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400"
             />
           </label>

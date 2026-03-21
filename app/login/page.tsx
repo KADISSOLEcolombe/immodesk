@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, useEffect, useState, Suspense, useRef } from 'react';
 import { Mail, Lock, User, ArrowRight, ArrowLeft, Loader2, ShieldCheck, Smartphone, Check, MessageSquare } from 'lucide-react';
+import { AuthService } from '@/lib/auth-service';
 
 type UserRole = 'tenant' | 'owner' | 'admin';
 type LoginStep = 'credentials' | '2fa_selection' | '2fa_verify';
@@ -52,11 +53,30 @@ function LoginForm() {
 
     setIsLoading(true);
     
-    // Simulate API call for credentials check
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    setIsLoading(false);
-    setStep('2fa_selection');
+    try {
+      // Utiliser le service d'authentification réel
+      const response = await AuthService.login({
+        email: email.trim(),
+        password: password.trim(),
+      });
+      
+      if (response.success) {
+        // Rediriger selon le rôle de l'utilisateur
+        const userRole = AuthService.getUserRole();
+        
+        // Pour la démo, on utilise le rôle sélectionné dans le formulaire
+        // En production, on utilisera le rôle retourné par le backend
+        router.push(roleTarget(role));
+      } else {
+        // Afficher l'erreur du backend
+        alert(response.message || 'Erreur lors de la connexion');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      alert('Erreur technique lors de la connexion');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleMethodSelect = async (method: 'email' | 'sms') => {

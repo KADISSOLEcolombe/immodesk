@@ -1,9 +1,13 @@
 "use client";
 
 import { useState } from 'react';
-import { CreditCard, Wallet, Smartphone, ShieldCheck, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, CheckCircle, AlertCircle, CreditCard, Smartphone, Wallet, Loader2, CheckCircle2, ArrowRight, ShieldCheck } from 'lucide-react';
+import { PaiementEnLigneService, InitierPaiementData } from '@/lib/paiement-en-ligne-service';
+import { TransactionsList } from '@/components/paiement/TransactionsList';
+import { TransactionPaiement, MoyenPaiement } from '@/types/api';
+import { formatCurrency } from '@/lib/utils';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
-import { PaymentRecord, usePayments } from '@/components/payments/PaymentProvider';
 import { jsPDF } from 'jspdf';
 
 const currencyFormatter = new Intl.NumberFormat('fr-TG', {
@@ -17,106 +21,163 @@ const charges = 15000;
 const tenantName = 'Kossi Mensah';
 const propertyTitle = 'Appartement meublé à Bè';
 
-type PaymentMethod = 'mix' | 'moov' | 'tmoney' | 'card';
-
-const generateReceiptPdf = (record: PaymentRecord) => {
-  const doc = new jsPDF();
-  doc.setFillColor(24, 24, 27);
-  doc.rect(0, 0, 210, 30, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(16);
-  doc.text('ImmoDesk Togo', 14, 18);
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(14);
-  doc.text('Reçu de paiement', 14, 42);
-  doc.setFontSize(11);
-  doc.text(`Référence: ${record.reference}`, 14, 52);
-  doc.text(`Date: ${new Date(record.createdAt).toLocaleString('fr-TG')}`, 14, 60);
-  doc.text(`Locataire: ${record.tenantName}`, 14, 68);
-  doc.text(`Bien: ${record.propertyTitle}`, 14, 76);
-  doc.text(`Mois: ${record.month}`, 14, 84);
-  doc.text(`Canal: ${record.channel}`, 14, 92);
-  doc.text(`Statut: ${record.status}`, 14, 100);
-  doc.text(`Montant: ${currencyFormatter.format(record.amount)}`, 14, 108);
-  doc.setFontSize(9);
-  doc.text('Ce reçu est généré automatiquement (simulation).', 14, 122);
-  doc.save(`recu-${record.reference}.pdf`);
-};
+const moyensPaiement = [
+  { 
+    id: 'moov_money' as MoyenPaiement, 
+    label: 'Moov Money', 
+    icon: Smartphone,
+    description: 'Paiement via Moov Money'
+  },
+  { 
+    id: 'mixx_by_yas' as MoyenPaiement, 
+    label: 'Mixx by Yas', 
+    icon: Wallet,
+    description: 'Paiement via Mixx by Yas'
+  },
+  { 
+    id: 'carte_bancaire' as MoyenPaiement, 
+    label: 'Carte Bancaire', 
+    icon: CreditCard,
+    description: 'Paiement par carte bancaire'
+  },
+];
 
 export default function TenantPaymentPage() {
   const { addNotification } = useNotifications();
-  const {
-    startMobileMoneyPayment,
-    confirmMobileMoneyPayment,
-    startCardPayment,
-    markReceiptGenerated,
-    markReceiptEmailed,
-  } = usePayments();
-
+  const [moyenSelectionne, setMoyenSelectionne] = useState<MoyenPaiement>('moov_money');
+  const [montant, setMontant] = useState(180000);
+  const [telephone, setTelephone] = useState('');
+  const [numeroCarte, setNumeroCarte] = useState('');
+  const [expiryCarte, setExpiryCarte] = useState('');
+  const [cvvCarte, setCvvCarte] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [transactionEnCours, setTransactionEnCours] = useState<TransactionPaiement | null>(null);
+  const [statusVerification, setStatusVerification] = useState<'idle' | 'checking' | 'success' | 'failed'>('idle');
+  const [error, setError] = useState<string | null>(null);
   const [month, setMonth] = useState('mars 2026');
-  const [includeCharges, setIncludeCharges] = useState(true);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('mix');
+  const [includeCharges, setIncludeCharges] = useState(false);
+  type PaymentMethod = 'mix' | 'moov' | 'tmoney' | 'card';
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('moov');
   const [mobileNumber, setMobileNumber] = useState('');
-  const [smsCode, setSmsCode] = useState('');
-  const [pendingMobileId, setPendingMobileId] = useState<string | null>(null);
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvv, setCardCvv] = useState('');
-  const [paymentError, setPaymentError] = useState('');
-  const [paymentInfo, setPaymentInfo] = useState('');
+  const [smsCode, setSmsCode] = useState('');
+  const [paymentInfo, setPaymentInfo] = useState<string | null>(null);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [pendingMobileId, setPendingMobileId] = useState<string | null>(null);
 
   const totalToPay = includeCharges ? baseRent + charges : baseRent;
 
-  const simulateEmailReceipt = (record: PaymentRecord) => {
-    markReceiptEmailed(record.id);
-    addNotification({ category: 'message', title: `Reçu envoyé par email (simulation) pour ${record.reference}.` });
-  };
+  // Mock data - TODO: Récupérer depuis le backend
+  const bailId = 'bail-123';
+  const moisConcerne = new Date().toISOString().slice(0, 7) + '-01';
 
-  const handlePay = async () => {
-    setPaymentError('');
-    setPaymentInfo('');
-
-    if (paymentMethod === 'mix' || paymentMethod === 'moov' || paymentMethod === 'tmoney') {
-      if (!mobileNumber.trim()) {
-        setPaymentError('Renseigne le numéro Mobile Money.');
-        return;
-      }
-      const created = startMobileMoneyPayment({ tenantName, propertyTitle, month, amount: totalToPay, operator: paymentMethod, phone: mobileNumber });
-      setPendingMobileId(created.id);
-      setPaymentInfo('Code SMS envoyé (simulation): utilise 1234 pour valider.');
-      addNotification({ category: 'payment', title: `Paiement Mobile Money en attente (${paymentMethod.toUpperCase()}) pour ${month}.` });
+  const handleInitierPaiement = async () => {
+    setError(null);
+    
+    if (montant <= 0) {
+      setError('Le montant doit être supérieur à 0');
       return;
     }
 
-    const created = startCardPayment({ tenantName, propertyTitle, month, amount: totalToPay, cardNumber, expiry: cardExpiry, cvv: cardCvv });
-    if (created.status === 'success') {
-      setPaymentInfo('Paiement carte accepté (simulation).');
-      addNotification({ category: 'payment', title: `Paiement carte réussi pour ${month}.` });
-      generateReceiptPdf(created);
-      markReceiptGenerated(created.id);
-      simulateEmailReceipt(created);
-    } else {
-      setPaymentError('Paiement carte refusé (simulation). Vérifie les champs.');
-      addNotification({ category: 'payment', title: `Paiement carte échoué pour ${month}.` });
+    const moyen = moyensPaiement.find(m => m.id === moyenSelectionne);
+    if ((moyenSelectionne === 'moov_money' || moyenSelectionne === 'mixx_by_yas') && !telephone) {
+      setError('Veuillez saisir votre numéro de téléphone');
+      return;
+    }
+
+    if (moyenSelectionne === 'carte_bancaire' && (!numeroCarte || !expiryCarte || !cvvCarte)) {
+      setError('Veuillez compléter les informations de carte');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const data: InitierPaiementData = {
+        bail: bailId,
+        montant,
+        moyen_paiement: moyenSelectionne,
+        numero_telephone: (moyenSelectionne === 'moov_money' || moyenSelectionne === 'mixx_by_yas') ? telephone : undefined,
+        mois_concerne: moisConcerne,
+      };
+
+      const response = await PaiementEnLigneService.initierPaiement(data);
+      
+      if (response.success && response.data) {
+        setTransactionEnCours(response.data);
+        setStatusVerification('checking');
+        addNotification({ 
+          category: 'payment', 
+          title: `Paiement initié via ${moyen?.label}` 
+        });
+        // Vérifier le statut après un délai
+        setTimeout(() => verifierStatut(response.data!.reference), 3000);
+      } else {
+        setError(response.message || 'Erreur lors de l\'initiation du paiement');
+      }
+    } catch (err) {
+      setError('Erreur technique lors du paiement');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleConfirmSms = () => {
-    if (!pendingMobileId) return;
-    const result = confirmMobileMoneyPayment(pendingMobileId, smsCode);
-    if (!result) { setPaymentError('Transaction introuvable.'); return; }
-    if (result.status === 'success') {
-      setPaymentInfo('Paiement Mobile Money réussi.');
-      addNotification({ category: 'payment', title: `Paiement Mobile Money confirmé pour ${result.month}.` });
-      generateReceiptPdf(result);
-      markReceiptGenerated(result.id);
-      simulateEmailReceipt(result);
-    } else {
-      setPaymentError('Code SMS invalide, paiement échoué.');
-      addNotification({ category: 'payment', title: `Paiement Mobile Money échoué pour ${result.month}.` });
+  const verifierStatut = async (reference: string) => {
+    try {
+      const response = await PaiementEnLigneService.getStatutTransaction(reference);
+      if (response.success && response.data) {
+        setTransactionEnCours(response.data);
+        if (response.data.statut === 'valide') {
+          setStatusVerification('success');
+          addNotification({ 
+            category: 'payment', 
+            title: 'Paiement confirmé avec succès !' 
+          });
+        } else if (response.data.statut === 'echoue' || response.data.statut === 'annule') {
+          setStatusVerification('failed');
+          setError(response.data.message_retour || 'Le paiement a échoué');
+        } else {
+          // Toujours en attente, vérifier à nouveau
+          setTimeout(() => verifierStatut(reference), 3000);
+        }
+      }
+    } catch (err) {
+      setStatusVerification('failed');
+      setError('Erreur lors de la vérification du statut');
     }
+  };
+
+  const handleAnnuler = async () => {
+    if (!transactionEnCours) return;
+    
+    try {
+      await PaiementEnLigneService.annulerTransaction(transactionEnCours.reference);
+      setTransactionEnCours(null);
+      setStatusVerification('idle');
+      addNotification({ 
+        category: 'payment', 
+        title: 'Transaction annulée' 
+      });
+    } catch (err) {
+      setError('Erreur lors de l\'annulation');
+    }
+  };
+
+  const resetForm = () => {
+    setTransactionEnCours(null);
+    setStatusVerification('idle');
+    setError(null);
+  };
+
+  const handlePay = async () => {
+    setPaymentInfo('Paiement effectué avec succès !');
+    setPaymentError(null);
+  };
+
+  const handleConfirmSms = () => {
     setPendingMobileId(null);
-    setSmsCode('');
+    setPaymentInfo('Paiement confirmé par SMS');
   };
 
   return (

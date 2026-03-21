@@ -1,10 +1,16 @@
 ﻿"use client";
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
-import { Bell, Building2, CreditCard, FileText } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Bell, Building2, CreditCard, FileText, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
 import { usePayments } from '@/components/payments/PaymentProvider';
+import { PaiementsList } from '@/components/comptabilite/PaiementsList';
+import { DepensesList } from '@/components/comptabilite/DepensesList';
+import { BalanceCard } from '@/components/comptabilite/BalanceCard';
+import { ComptabiliteService } from '@/lib/comptabilite-service';
+import { Balance } from '@/types/api';
+import { formatCurrency } from '@/lib/utils';
 
 const currencyFormatter = new Intl.NumberFormat('fr-TG', {
   style: 'currency',
@@ -30,20 +36,48 @@ export default function OwnerOverviewPage() {
   const { unreadCount } = useNotifications();
   const { getOwnerBalance } = usePayments();
   const [properties] = useState(initialProperties);
+  const [balance, setBalance] = useState<Balance | null>(null);
+  const [isLoadingBalance, setIsLoadingBalance] = useState(true);
+
+  // Chargement de la balance réelle depuis le backend
+  useEffect(() => {
+    const loadBalance = async () => {
+      try {
+        setIsLoadingBalance(true);
+        const response = await ComptabiliteService.getBalanceGlobale();
+        if (response.success && response.data) {
+          setBalance(response.data);
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement de la balance:', error);
+      } finally {
+        setIsLoadingBalance(false);
+      }
+    };
+
+    loadBalance();
+  }, []);
 
   const stats = useMemo(() => {
     const total = properties.length;
     const occupied = properties.filter((p) => p.status === 'rented').length;
-    const collected = properties
+    
+    // Utiliser les données comptables réelles si disponibles
+    const collected = balance?.total_global_revenus || properties
       .filter((p) => p.status === 'rented' && p.rentStatus === 'paid')
       .reduce((sum, p) => sum + p.rentAmount, 0);
+    
+    const depenses = balance?.total_global_depenses || 50000; // Frais par défaut
+    const beneficeNet = balance?.benefice_net_global || (collected - depenses);
+    
     const expected = properties
       .filter((p) => p.status === 'rented')
       .reduce((sum, p) => sum + p.rentAmount, 0);
     const pending = Math.max(expected - collected, 0);
     const occupancyRate = total === 0 ? 0 : Math.round((occupied / total) * 100);
-    return { total, occupancyRate, collected, pending, balance: collected - 50000 };
-  }, [properties]);
+    
+    return { total, occupancyRate, collected, pending, depenses, beneficeNet };
+  }, [properties, balance]);
 
   return (
     <>
@@ -64,16 +98,34 @@ export default function OwnerOverviewPage() {
           <p className="text-xs text-zinc-500">Occupation: {stats.occupancyRate}%</p>
         </article>
         <article className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Loyers encaissés</p>
-          <p className="mt-2 text-2xl font-bold text-green-700">{currencyFormatter.format(stats.collected)}</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Revenus totaux</p>
+          <p className="mt-2 text-2xl font-bold text-green-700">
+            {isLoadingBalance ? '...' : formatCurrency(stats.collected)}
+          </p>
+          <p className="text-xs text-green-600 flex items-center gap-1">
+            <TrendingUp className="w-3 h-3" />
+            Loyers perçus
+          </p>
         </article>
         <article className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Loyers en attente</p>
-          <p className="mt-2 text-2xl font-bold text-orange-700">{currencyFormatter.format(stats.pending)}</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Dépenses totales</p>
+          <p className="mt-2 text-2xl font-bold text-red-700">
+            {isLoadingBalance ? '...' : formatCurrency(stats.depenses)}
+          </p>
+          <p className="text-xs text-red-600 flex items-center gap-1">
+            <TrendingDown className="w-3 h-3" />
+            Charges & travaux
+          </p>
         </article>
         <article className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Solde portefeuille</p>
-          <p className="mt-2 text-2xl font-bold text-zinc-900">{currencyFormatter.format(getOwnerBalance())}</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Bénéfice net</p>
+          <p className={`mt-2 text-2xl font-bold ${stats.beneficeNet >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
+            {isLoadingBalance ? '...' : formatCurrency(stats.beneficeNet)}
+          </p>
+          <p className={`text-xs flex items-center gap-1 ${stats.beneficeNet >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+            <Wallet className="w-3 h-3" />
+            {stats.beneficeNet >= 0 ? 'Rentable' : 'Déficit'}
+          </p>
         </article>
       </section>
 
@@ -92,6 +144,52 @@ export default function OwnerOverviewPage() {
               <span className="text-sm font-medium text-zinc-900 group-hover:underline">{label}</span>
             </Link>
           ))}
+        </div>
+      </section>
+
+      {/* Section Balance */}
+      <section className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold text-zinc-900">Balance comptable</h2>
+          <Link 
+            href="/owner/comptabilite/balance" 
+            className="text-sm text-blue-600 hover:underline"
+          >
+            Voir le détail →
+          </Link>
+        </div>
+        <BalanceCard />
+      </section>
+
+      {/* Section Paiements récents */}
+      <section className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold text-zinc-900">Derniers paiements</h2>
+          <Link 
+            href="/owner/comptabilite/paiements" 
+            className="text-sm text-blue-600 hover:underline"
+          >
+            Voir tout →
+          </Link>
+        </div>
+        <div className="bg-white rounded-2xl border border-black/5 shadow-sm">
+          <PaiementsList limit={5} />
+        </div>
+      </section>
+
+      {/* Section Dépenses récentes */}
+      <section className="mt-8 mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold text-zinc-900">Dernières dépenses</h2>
+          <Link 
+            href="/owner/comptabilite/depenses" 
+            className="text-sm text-blue-600 hover:underline"
+          >
+            Voir tout →
+          </Link>
+        </div>
+        <div className="bg-white rounded-2xl border border-black/5 shadow-sm">
+          <DepensesList limit={5} />
         </div>
       </section>
     </>
