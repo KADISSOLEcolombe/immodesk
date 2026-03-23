@@ -2,11 +2,15 @@ import { apiClient, StandardApiResponse } from '@/lib/api-client';
 import { TransactionPaiement, MoyenPaiement, ConfigSimulateur } from '@/types/api';
 
 export interface InitierPaiementData {
-  bail: string;
+  bail_id: string;
   montant: number;
   moyen_paiement: MoyenPaiement;
   numero_telephone?: string;
   mois_concerne: string; // Format YYYY-MM-01
+  // Carte bancaire fields
+  numero_carte?: string;
+  date_expiration?: string; // format MM/YY
+  cvv?: string;
 }
 
 export class PaiementEnLigneService {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   ArrowDownToLine,
   CalendarDays,
@@ -14,10 +14,14 @@ import {
   ShieldCheck,
   Smartphone,
   XCircle,
+  Loader2,
+  AlertCircle,
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
-import { PaymentRecord, PaymentStatus, usePayments } from '@/components/payments/PaymentProvider';
+import { PaiementEnLigneService } from '@/lib/paiement-en-ligne-service';
+import { TransactionPaiement, StatutTransaction, MoyenPaiement } from '@/types/api';
+import { formatCurrency } from '@/lib/utils';
 
 const currencyFormatter = new Intl.NumberFormat('fr-TG', {
   style: 'currency',
@@ -25,12 +29,80 @@ const currencyFormatter = new Intl.NumberFormat('fr-TG', {
   maximumFractionDigits: 0,
 });
 
-const tenantName = 'Kossi Mensah';
-const propertyTitle = 'Appartement meublé à Bè';
+// Types UI (basés sur le PaymentProvider existant)
+type PaymentStatusUI = 'pending' | 'success' | 'failed' | 'refunded' | 'canceled';
+type PaymentChannelUI = 'mobile_money' | 'card' | 'manual';
+type MobileOperator = 'mix' | 'moov' | 'tmoney';
 
-type ChannelFilter = 'all' | 'mobile_money' | 'card' | 'manual';
+interface PaymentRecordUI {
+  id: string;
+  tenantName: string;
+  propertyTitle: string;
+  month: string;
+  amount: number;
+  channel: PaymentChannelUI;
+  operator?: MobileOperator;
+  phone?: string;
+  cardLast4?: string;
+  status: PaymentStatusUI;
+  source: 'auto' | 'manual';
+  createdAt: string;
+  reference: string;
+  refundedAmount: number;
+  receiptGenerated: boolean;
+  receiptEmailed: boolean;
+}
 
-const generateReceiptPdf = (record: PaymentRecord) => {
+// Mapping des statuts backend vers UI
+const mapStatutToUI = (statut: StatutTransaction): PaymentStatusUI => {
+  switch (statut) {
+    case 'valide': return 'success';
+    case 'echoue': return 'failed';
+    case 'en_attente': return 'pending';
+    case 'annule': return 'canceled';
+    default: return 'pending';
+  }
+};
+
+// Mapping des moyens de paiement vers canaux UI
+const mapMoyenPaiementToUI = (moyen: MoyenPaiement): { channel: PaymentChannelUI; operator?: MobileOperator } => {
+  switch (moyen) {
+    case 'moov_money': return { channel: 'mobile_money', operator: 'moov' };
+    case 'mixx_by_yas': return { channel: 'mobile_money', operator: 'mix' };
+    case 'carte_bancaire': return { channel: 'card' };
+    default: return { channel: 'manual' };
+  }
+};
+
+// Mapper TransactionPaiement (backend) vers PaymentRecordUI
+const mapTransactionToUI = (transaction: TransactionPaiement): PaymentRecordUI => {
+  const { channel, operator } = mapMoyenPaiementToUI(transaction.moyen_paiement);
+  const date = new Date(transaction.mois_concerne);
+  const monthLabel = date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  
+  return {
+    id: transaction.id,
+    tenantName: '', // Sera rempli si nécessaire depuis le bail
+    propertyTitle: '', // Sera rempli si nécessaire depuis le bail
+    month: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
+    amount: transaction.montant,
+    channel,
+    operator,
+    phone: transaction.numero_telephone || undefined,
+    cardLast4: transaction.derniers_chiffres_carte || undefined,
+    status: mapStatutToUI(transaction.statut),
+    source: 'auto',
+    createdAt: transaction.date_initiation,
+    reference: transaction.reference,
+    refundedAmount: 0, // Non géré actuellement par le backend
+    receiptGenerated: transaction.statut === 'valide',
+    receiptEmailed: false,
+  };
+};
+
+type ChannelFilter = 'all' | PaymentChannelUI;
+
+const generateReceiptPdf = (record: PaymentRecordUI) => {
   const doc = new jsPDF();
   doc.setFillColor(24, 24, 27);
   doc.rect(0, 0, 210, 30, 'F');
@@ -56,73 +128,107 @@ const generateReceiptPdf = (record: PaymentRecord) => {
 
 export default function TenantHistoryPage() {
   const { addNotification } = useNotifications();
-  const { payments, filterPayments, exportPaymentsCsv, exportPaymentsPdf, markReceiptGenerated, markReceiptEmailed } = usePayments();
-
+  
+  // États pour les données API
+  const [payments, setPayments] = useState<PaymentRecordUI[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // États pour les filtres
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
-  const [filterStatus, setFilterStatus] = useState<'all' | PaymentStatus>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | PaymentStatusUI>('all');
   const [filterType, setFilterType] = useState<ChannelFilter>('all');
   const [query, setQuery] = useState('');
 
-  const filteredHistory = useMemo(
-    () =>
-      filterPayments({ from: filterFrom || undefined, to: filterTo || undefined, status: filterStatus, channel: filterType })
-        .filter((item) => item.tenantName === tenantName || item.propertyTitle === propertyTitle)
-        .filter((item) => {
-          const q = query.trim().toLowerCase();
-          if (!q) return true;
-          return (
-            item.reference.toLowerCase().includes(q) ||
-            item.month.toLowerCase().includes(q) ||
-            item.propertyTitle.toLowerCase().includes(q) ||
-            item.channel.toLowerCase().includes(q) ||
-            currencyFormatter.format(item.amount).toLowerCase().includes(q)
-          );
-        }),
-    [filterFrom, filterTo, filterStatus, filterType, filterPayments, query],
-  );
+  // Charger l'historique depuis le backend
+  useEffect(() => {
+    loadPaymentHistory();
+  }, []);
 
-  const latestPayment = useMemo(
-    () => payments.filter((p) => p.tenantName === tenantName || p.propertyTitle === propertyTitle)[0] ?? null,
-    [payments],
-  );
-
-  const simulateEmailReceipt = (record: PaymentRecord) => {
-    markReceiptEmailed(record.id);
-    addNotification({ category: 'message', title: `Reçu envoyé par email (simulation) pour ${record.reference}.` });
+  const loadPaymentHistory = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await PaiementEnLigneService.getHistoriqueTransactions();
+      if (response.success && response.data) {
+        const mappedPayments = response.data.map(mapTransactionToUI);
+        setPayments(mappedPayments);
+      } else {
+        setError(response.message || 'Erreur lors du chargement de l\'historique');
+      }
+    } catch (err) {
+      setError('Erreur technique lors du chargement des paiements');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleReceiptAction = (item: PaymentRecord) => {
+  const filteredHistory = useMemo(() => {
+    const fromTs = filterFrom ? new Date(filterFrom).getTime() : null;
+    const toTs = filterTo ? new Date(filterTo).getTime() : null;
+    
+    return payments.filter((item) => {
+      const itemTs = new Date(item.createdAt).getTime();
+      const matchesFrom = fromTs === null || itemTs >= fromTs;
+      const matchesTo = toTs === null || itemTs <= toTs;
+      const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
+      const matchesChannel = filterType === 'all' || item.channel === filterType;
+      
+      const q = query.trim().toLowerCase();
+      const matchesQuery = !q || (
+        item.reference.toLowerCase().includes(q) ||
+        item.month.toLowerCase().includes(q) ||
+        item.channel.toLowerCase().includes(q) ||
+        currencyFormatter.format(item.amount).toLowerCase().includes(q)
+      );
+      
+      return matchesFrom && matchesTo && matchesStatus && matchesChannel && matchesQuery;
+    });
+  }, [payments, filterFrom, filterTo, filterStatus, filterType, query]);
+
+  const latestPayment = useMemo(() => payments[0] ?? null, [payments]);
+
+  const handleReceiptAction = (item: PaymentRecordUI) => {
     generateReceiptPdf(item);
-    markReceiptGenerated(item.id);
-    simulateEmailReceipt(item);
+    addNotification({ 
+      type: 'info', 
+      titre: 'Reçu généré', 
+      message: `Le reçu pour ${item.reference} a été téléchargé.` 
+    });
   };
 
-  const statusMeta = (status: PaymentStatus) => {
+  const statusMeta = (status: PaymentStatusUI) => {
     if (status === 'success') return { label: 'Réussi', icon: CheckCircle2, badge: 'bg-emerald-50 text-emerald-700 ring-emerald-200' };
     if (status === 'failed') return { label: 'Échoué', icon: XCircle, badge: 'bg-red-50 text-red-700 ring-red-200' };
+    if (status === 'canceled') return { label: 'Annulé', icon: XCircle, badge: 'bg-gray-50 text-gray-700 ring-gray-200' };
     return { label: 'En attente', icon: Clock3, badge: 'bg-amber-50 text-amber-700 ring-amber-200' };
   };
 
-  const channelMeta = (channel: string) => {
-    const c = channel.toLowerCase();
-    if (c.includes('mobile') || c.includes('flooz') || c.includes('moov') || c.includes('tmoney')) {
-      return { label: channel.replaceAll('_', ' '), icon: Smartphone, badge: 'bg-indigo-50 text-indigo-700 ring-indigo-200' };
+  const channelMeta = (channel: PaymentChannelUI) => {
+    if (channel === 'mobile_money') {
+      return { label: 'Mobile Money', icon: Smartphone, badge: 'bg-indigo-50 text-indigo-700 ring-indigo-200' };
     }
-    if (c.includes('card') || c.includes('carte')) {
-      return { label: channel.replaceAll('_', ' '), icon: CreditCard, badge: 'bg-zinc-50 text-zinc-700 ring-zinc-200' };
+    if (channel === 'card') {
+      return { label: 'Carte Bancaire', icon: CreditCard, badge: 'bg-zinc-50 text-zinc-700 ring-zinc-200' };
     }
-    return { label: channel.replaceAll('_', ' '), icon: ShieldCheck, badge: 'bg-sky-50 text-sky-700 ring-sky-200' };
+    return { label: 'Manuel', icon: ShieldCheck, badge: 'bg-sky-50 text-sky-700 ring-sky-200' };
   };
 
   const summary = useMemo(() => {
-    const all = payments.filter((p) => p.tenantName === tenantName || p.propertyTitle === propertyTitle);
-    const total = all.reduce((acc, p) => acc + p.amount, 0);
-    const success = all.filter((p) => p.status === 'success');
-    const pending = all.filter((p) => p.status === 'pending');
-    const failed = all.filter((p) => p.status === 'failed');
-    const last = all[0] ?? null;
-    return { totalCount: all.length, totalAmount: total, successCount: success.length, pendingCount: pending.length, failedCount: failed.length, last };
+    const total = payments.reduce((acc, p) => acc + p.amount, 0);
+    const success = payments.filter((p) => p.status === 'success');
+    const pending = payments.filter((p) => p.status === 'pending');
+    const failed = payments.filter((p) => p.status === 'failed');
+    const last = payments[0] ?? null;
+    return { 
+      totalCount: payments.length, 
+      totalAmount: total, 
+      successCount: success.length, 
+      pendingCount: pending.length, 
+      failedCount: failed.length, 
+      last 
+    };
   }, [payments]);
 
   const resetFilters = () => {
@@ -134,6 +240,56 @@ export default function TenantHistoryPage() {
   };
 
   const hasActiveFilters = Boolean(filterFrom || filterTo || filterStatus !== 'all' || filterType !== 'all' || query.trim());
+
+  // Export CSV
+  const exportPaymentsCsv = (records: PaymentRecordUI[]) => {
+    const header = ['Reference', 'Date', 'Mois', 'Montant', 'Canal', 'Statut'];
+    const rows = records.map((item) => [
+      item.reference,
+      new Date(item.createdAt).toLocaleString('fr-TG'),
+      item.month,
+      String(item.amount),
+      item.channel,
+      item.status,
+    ]);
+
+    const csvContent = [header, ...rows]
+      .map((line) => line.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(','))
+      .join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `paiements-${Date.now()}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Export PDF
+  const exportPaymentsPdf = (records: PaymentRecordUI[], title: string) => {
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text('ImmoDesk Togo', 14, 18);
+    doc.setFontSize(12);
+    doc.text(title, 14, 26);
+
+    let y = 36;
+    records.slice(0, 20).forEach((item) => {
+      doc.setFontSize(10);
+      doc.text(`${item.reference} | ${new Date(item.createdAt).toLocaleString('fr-TG')}`, 14, y);
+      y += 6;
+      doc.text(`${item.month} | ${item.channel} | ${item.status} | ${item.amount} FCFA`, 14, y);
+      y += 8;
+
+      if (y > 270) {
+        doc.addPage();
+        y = 20;
+      }
+    });
+
+    doc.save(`paiements-${Date.now()}.pdf`);
+  };
 
   return (
     <>
@@ -220,13 +376,14 @@ export default function TenantHistoryPage() {
 
             <select
               value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value as 'all' | PaymentStatus)}
+              onChange={(e) => setFilterStatus(e.target.value as 'all' | PaymentStatusUI)}
               className="h-11 w-full rounded-2xl border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-900 outline-none transition focus:border-zinc-900 focus:ring-4 focus:ring-zinc-900/5"
             >
               <option value="all">Tous statuts</option>
               <option value="pending">En attente</option>
               <option value="success">Réussi</option>
               <option value="failed">Échoué</option>
+              <option value="canceled">Annulé</option>
             </select>
 
             <select
@@ -276,7 +433,24 @@ export default function TenantHistoryPage() {
       </section>
 
       <section className="rounded-3xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
-        {filteredHistory.length === 0 ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+            <p className="mt-4 text-sm text-zinc-500">Chargement de l'historique...</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <AlertCircle className="h-8 w-8 text-red-400" />
+            <p className="mt-4 text-sm text-red-600">{error}</p>
+            <button
+              onClick={loadPaymentHistory}
+              className="mt-4 inline-flex h-10 items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-4 text-sm font-semibold text-white"
+            >
+              <RefreshCcw className="h-4 w-4" />
+              Réessayer
+            </button>
+          </div>
+        ) : filteredHistory.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-3xl bg-gradient-to-b from-zinc-50 to-white p-10 text-center ring-1 ring-zinc-100">
             <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-900 text-white shadow-lg shadow-zinc-900/15">
               <Search className="h-5 w-5" aria-hidden="true" />

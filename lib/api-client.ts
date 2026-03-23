@@ -50,6 +50,12 @@ console.log('🔗 API URL configurée:', formattedApiUrl);
 
 class ApiClient {
   private client: AxiosInstance;
+  private isRefreshing: boolean = false;
+  private refreshPromise: Promise<string | null> | null = null;
+  private failedQueue: Array<{
+    resolve: (value: string | null) => void;
+    reject: (reason?: any) => void;
+  }> = [];
 
   constructor() {
     this.client = axios.create({
@@ -88,46 +94,74 @@ class ApiClient {
         console.error('❌ Erreur API:', error.config?.method?.toUpperCase(), error.config?.url, error.response?.status);
 
         if (error.response?.status === 401 && !originalRequest._retry) {
-          console.log('🔄 Token expiré, tentative de rafraîchissement...');
-          originalRequest._retry = true;
-
+          if (!this.isRefreshing) {
+            console.log('🔄 Token expiré, tentative de rafraîchissement...');
+            this.isRefreshing = true;
+            
+            // Créer une seule promesse de refresh partagée
+            this.refreshPromise = this.performRefresh();
+          }
+          
           try {
-            const refreshToken = localStorage.getItem('refresh_token');
-            if (refreshToken) {
-              const response = await this.post<{ access: string }>('/auth/token/refresh/', {
-                refresh: refreshToken,
-              });
-
-              const newAccessToken = response.data.data?.access;
-              if (newAccessToken) {
-                localStorage.setItem('access_token', newAccessToken);
-                originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-                console.log('✅ Token rafraîchi avec succès');
-                return this.client(originalRequest);
-              }
+            const newAccessToken = await this.refreshPromise;
+            if (newAccessToken) {
+              originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+              console.log('✅ Token rafraîchi avec succès, relance de la requête');
+              return this.client(originalRequest);
+            } else {
+              throw new Error('No access token received');
             }
           } catch (refreshError) {
             console.error('❌ Échec du rafraîchissement du token:', refreshError);
-            // Échec du rafraîchissement, déconnexion
-            localStorage.removeItem('access_token');
-            localStorage.removeItem('refresh_token');
-            localStorage.removeItem('user');
-            
-            // Nettoyer les cookies aussi
-            if (typeof window !== 'undefined') {
-              document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-              document.cookie = 'refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-              document.cookie = 'user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-            }
-            
-            window.location.href = '/login';
+            this.clearAuthAndRedirect();
             return Promise.reject(refreshError);
+          } finally {
+            this.isRefreshing = false;
+            this.refreshPromise = null;
           }
         }
 
         return Promise.reject(error);
       }
     );
+  }
+
+  // Méthode pour effectuer le refresh du token
+  private async performRefresh(): Promise<string | null> {
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (!refreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    try {
+      const response = await this.client.post('/auth/token/refresh/', {
+        refresh: refreshToken,
+      });
+      
+      const newAccessToken = response.data?.data?.access;
+      if (newAccessToken) {
+        localStorage.setItem('access_token', newAccessToken);
+        return newAccessToken;
+      }
+      return null;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  // Méthode pour nettoyer l'auth et rediriger
+  private clearAuthAndRedirect(): void {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user');
+    
+    if (typeof window !== 'undefined') {
+      document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      document.cookie = 'refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      document.cookie = 'user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      
+      window.location.href = '/login';
+    }
   }
 
   // Méthodes HTTP génériques

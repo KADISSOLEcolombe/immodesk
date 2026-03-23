@@ -5,14 +5,16 @@ import { Bell } from 'lucide-react';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
 
 const categoryLabel = {
-  payment: 'Paiement',
-  message: 'Message',
-  system: 'Système',
+  quittance: 'Quittance',
+  alerte: 'Alerte',
+  info: 'Information',
+  paiement: 'Paiement',
+  bail: 'Bail',
 };
 
 export default function NotificationCenter() {
   const [open, setOpen] = useState(false);
-  const { notifications, unreadCount, markAllAsRead } = useNotifications();
+  const { notifications, unreadCount, markAllAsRead, markAsRead } = useNotifications();
 
   return (
     <div className="fixed right-4 top-4 z-50">
@@ -45,10 +47,15 @@ export default function NotificationCenter() {
 
           <ul className="max-h-80 space-y-2 overflow-auto pr-1">
             {notifications.map((item) => (
-              <li key={item.id} className="rounded-xl border border-zinc-100 bg-zinc-50 p-2.5">
-                <p className="text-xs font-medium text-zinc-500">{categoryLabel[item.category]}</p>
-                <p className="text-sm text-zinc-800">{item.title}</p>
-                <p className="mt-1 text-[11px] text-zinc-500">{item.createdAt}</p>
+              <li 
+                key={item.id} 
+                className={`rounded-xl border p-2.5 ${item.lue ? 'border-zinc-100 bg-zinc-50' : 'border-zinc-200 bg-white'}`}
+                onClick={() => !item.lue && markAsRead(item.id)}
+              >
+                <p className="text-xs font-medium text-zinc-500">{categoryLabel[item.type]}</p>
+                <p className="text-sm font-medium text-zinc-800">{item.titre}</p>
+                <p className="mt-1 text-xs text-zinc-500">{item.message}</p>
+                <p className="mt-1 text-[11px] text-zinc-400">{new Date(item.date_envoi).toLocaleString('fr-FR')}</p>
               </li>
             ))}
           </ul>

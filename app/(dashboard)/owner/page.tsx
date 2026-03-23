@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Bell, Building2, CreditCard, FileText, TrendingUp, TrendingDown, Wallet } from 'lucide-react';
+import { Bell, Building2, CreditCard, FileText, TrendingUp, TrendingDown, Wallet, Loader2 } from 'lucide-react';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
-import { usePayments } from '@/components/payments/PaymentProvider';
 import { PaiementsList } from '@/components/comptabilite/PaiementsList';
 import { DepensesList } from '@/components/comptabilite/DepensesList';
 import { BalanceCard } from '@/components/comptabilite/BalanceCard';
 import { ComptabiliteService } from '@/lib/comptabilite-service';
+import { StatsService, DashboardStats } from '@/lib/stats-service';
 import { Balance } from '@/types/api';
 import { formatCurrency } from '@/lib/utils';
 
@@ -17,13 +17,6 @@ const currencyFormatter = new Intl.NumberFormat('fr-TG', {
   currency: 'XOF',
   maximumFractionDigits: 0,
 });
-
-const initialProperties = [
-  { id: 'prop-1', rentAmount: 180000, status: 'rented' as const, rentStatus: 'paid' as const },
-  { id: 'prop-2', rentAmount: 75000, status: 'rented' as const, rentStatus: 'late' as const },
-  { id: 'prop-4', rentAmount: 110000, status: 'vacant' as const, rentStatus: 'pending' as const },
-  { id: 'prop-6', rentAmount: 160000, status: 'maintenance' as const, rentStatus: 'pending' as const },
-];
 
 const quickLinks = [
   { href: '/owner/properties', label: 'Mes biens', icon: Building2, color: 'bg-blue-50 text-blue-700' },
@@ -34,50 +27,54 @@ const quickLinks = [
 
 export default function OwnerOverviewPage() {
   const { unreadCount } = useNotifications();
-  const { getOwnerBalance } = usePayments();
-  const [properties] = useState(initialProperties);
+  const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [balance, setBalance] = useState<Balance | null>(null);
-  const [isLoadingBalance, setIsLoadingBalance] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Chargement de la balance réelle depuis le backend
+  // Chargement des données depuis le backend
   useEffect(() => {
-    const loadBalance = async () => {
+    const loadData = async () => {
       try {
-        setIsLoadingBalance(true);
-        const response = await ComptabiliteService.getBalanceGlobale();
-        if (response.success && response.data) {
-          setBalance(response.data);
+        setIsLoading(true);
+        setError(null);
+
+        // Charger les stats du dashboard et la balance en parallèle
+        const [statsResponse, balanceResponse] = await Promise.all([
+          StatsService.getDashboard(),
+          ComptabiliteService.getBalanceGlobale(),
+        ]);
+
+        if (statsResponse.success && statsResponse.data) {
+          setDashboardStats(statsResponse.data);
         }
-      } catch (error) {
-        console.error('Erreur lors du chargement de la balance:', error);
+
+        if (balanceResponse.success && balanceResponse.data) {
+          setBalance(balanceResponse.data);
+        }
+      } catch (err) {
+        console.error('Erreur lors du chargement des données:', err);
+        setError('Impossible de charger les données du dashboard');
       } finally {
-        setIsLoadingBalance(false);
+        setIsLoading(false);
       }
     };
 
-    loadBalance();
+    loadData();
   }, []);
 
   const stats = useMemo(() => {
-    const total = properties.length;
-    const occupied = properties.filter((p) => p.status === 'rented').length;
+    // Utiliser les données du dashboard API si disponibles, sinon fallback sur les données comptables
+    const total = dashboardStats?.total_biens || 0;
+    const occupied = dashboardStats?.biens_loues || 0;
+    const collected = dashboardStats?.revenus_mois || balance?.total_global_revenus || 0;
+    const depenses = dashboardStats?.depenses_mois || balance?.total_global_depenses || 0;
+    const beneficeNet = dashboardStats?.benefice_net || balance?.benefice_net_global || (collected - depenses);
     
-    // Utiliser les données comptables réelles si disponibles
-    const collected = balance?.total_global_revenus || properties
-      .filter((p) => p.status === 'rented' && p.rentStatus === 'paid')
-      .reduce((sum, p) => sum + p.rentAmount, 0);
-    
-    const depenses = balance?.total_global_depenses || 50000; // Frais par défaut
-    const beneficeNet = balance?.benefice_net_global || (collected - depenses);
-    
-    const expected = properties
-      .filter((p) => p.status === 'rented')
-      .reduce((sum, p) => sum + p.rentAmount, 0);
-    const pending = Math.max(expected - collected, 0);
     const occupancyRate = total === 0 ? 0 : Math.round((occupied / total) * 100);
     
-    return { total, occupancyRate, collected, pending, depenses, beneficeNet };
-  }, [properties, balance]);
+    return { total, occupied, occupancyRate, collected, depenses, beneficeNet };
+  }, [dashboardStats, balance]);
 
   return (
     <>
@@ -100,7 +97,7 @@ export default function OwnerOverviewPage() {
         <article className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Revenus totaux</p>
           <p className="mt-2 text-2xl font-bold text-green-700">
-            {isLoadingBalance ? '...' : formatCurrency(stats.collected)}
+            {isLoading ? '...' : formatCurrency(stats.collected)}
           </p>
           <p className="text-xs text-green-600 flex items-center gap-1">
             <TrendingUp className="w-3 h-3" />
@@ -110,7 +107,7 @@ export default function OwnerOverviewPage() {
         <article className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Dépenses totales</p>
           <p className="mt-2 text-2xl font-bold text-red-700">
-            {isLoadingBalance ? '...' : formatCurrency(stats.depenses)}
+            {isLoading ? '...' : formatCurrency(stats.depenses)}
           </p>
           <p className="text-xs text-red-600 flex items-center gap-1">
             <TrendingDown className="w-3 h-3" />
@@ -120,7 +117,7 @@ export default function OwnerOverviewPage() {
         <article className="rounded-2xl border border-black/5 bg-white p-4 shadow-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Bénéfice net</p>
           <p className={`mt-2 text-2xl font-bold ${stats.beneficeNet >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>
-            {isLoadingBalance ? '...' : formatCurrency(stats.beneficeNet)}
+            {isLoading ? '...' : formatCurrency(stats.beneficeNet)}
           </p>
           <p className={`text-xs flex items-center gap-1 ${stats.beneficeNet >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
             <Wallet className="w-3 h-3" />

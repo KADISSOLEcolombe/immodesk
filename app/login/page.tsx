@@ -55,12 +55,28 @@ function LoginForm() {
     
     try {
       // Utiliser le service d'authentification réel
+      console.log("credentials", email, password);
       const response = await AuthService.login({
         email: email.trim(),
         password: password.trim(),
       });
       
       if (response.success) {
+        // Vérifier si 2FA est requis
+        if (response.code === 'AUTH_2FA_REQUIRED') {
+          console.log('🔐 2FA requis, passage à l\'étape de vérification');
+          // Stocker le token temporaire pour la vérification
+          const otpToken = (response.data as any)?.otp_token;
+          const canal = (response.data as any)?.canal;
+          if (otpToken) {
+            AuthService.setTempOTPData(otpToken, canal || 'mail');
+          }
+          // Passer directement à la vérification (le code est déjà envoyé par le backend)
+          setTwoFactorMethod(canal === 'sms' ? 'sms' : 'email');
+          setStep('2fa_verify');
+          return;
+        }
+        
         // Rediriger selon le rôle de l'utilisateur
         const userRole = AuthService.getUserRole();
         
@@ -114,10 +130,44 @@ function LoginForm() {
     if (verificationCode.some(c => !c)) return;
 
     setIsLoading(true);
-    // Simulate verification
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    router.push(roleTarget(role));
+    try {
+      const code = verificationCode.join('');
+      const response = await AuthService.verifyOTP(code);
+      
+      if (response.success) {
+        console.log('✅ 2FA vérifié avec succès');
+        // Rediriger selon le rôle
+        const userRole = AuthService.getUserRole();
+        router.push(roleTarget(role));
+      } else {
+        alert(response.message || 'Code invalide');
+        // Réinitialiser le code en cas d'erreur
+        setVerificationCode(['', '', '', '', '', '']);
+        inputRefs.current[0]?.focus();
+      }
+    } catch (error) {
+      console.error('2FA verification error:', error);
+      alert('Erreur lors de la vérification du code');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setIsLoading(true);
+    try {
+      const response = await AuthService.resendOTP();
+      if (response.success) {
+        alert('Un nouveau code a été envoyé');
+      } else {
+        alert(response.message || 'Erreur lors du renvoi du code');
+      }
+    } catch (error) {
+      console.error('Resend OTP error:', error);
+      alert('Erreur lors du renvoi du code');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -363,7 +413,11 @@ function LoginForm() {
 
               <div className="mt-6 text-sm text-zinc-500">
                 Vous n'avez pas reçu le code ?{' '}
-                <button className="font-semibold text-zinc-900 hover:underline">
+                <button 
+                  onClick={handleResendCode}
+                  disabled={isLoading}
+                  className="font-semibold text-zinc-900 hover:underline disabled:opacity-50"
+                >
                   Renvoyer
                 </button>
               </div>

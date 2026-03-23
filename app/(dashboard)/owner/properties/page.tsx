@@ -1,11 +1,13 @@
 "use client";
 
 import Link from 'next/link';
-import { FormEvent, useState } from 'react';
-import { Building2, Clock3, FileUp, PlusCircle } from 'lucide-react';
+import { FormEvent, useEffect, useState } from 'react';
+import { Building2, Clock3, FileUp, PlusCircle, Loader2 } from 'lucide-react';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
 import { usePayments } from '@/components/payments/PaymentProvider';
 import { useReports } from '@/components/reports/ReportProvider';
+import { PatrimoineService } from '@/lib/patrimoine-service';
+import { Bien } from '@/types/api';
 
 type RentStatus = 'paid' | 'late' | 'pending';
 
@@ -17,6 +19,7 @@ type OwnerProperty = {
   status: 'vacant' | 'rented' | 'maintenance';
   tenantName: string | null;
   rentStatus: RentStatus;
+  image?: string;
 };
 
 const currencyFormatter = new Intl.NumberFormat('fr-TG', {
@@ -25,27 +28,69 @@ const currencyFormatter = new Intl.NumberFormat('fr-TG', {
   maximumFractionDigits: 0,
 });
 
-const initialProperties: OwnerProperty[] = [
-  { id: 'prop-1', title: 'Appartement meublé à Bè', address: 'Avenue de la Libération, Lomé', rentAmount: 180000, status: 'rented', tenantName: 'Kossi Mensah', rentStatus: 'paid' },
-  { id: 'prop-2', title: 'Studio moderne proche université', address: 'Quartier Kpota, Kara', rentAmount: 75000, status: 'rented', tenantName: 'Afi Koutou', rentStatus: 'late' },
-  { id: 'prop-4', title: 'T2 proche du marché', address: 'Quartier Nyivé, Kpalimé', rentAmount: 110000, status: 'vacant', tenantName: null, rentStatus: 'pending' },
-  { id: 'prop-6', title: 'Immeuble en cours de rénovation', address: 'Route nationale N°1, Tsévié', rentAmount: 160000, status: 'maintenance', tenantName: null, rentStatus: 'pending' },
-];
-
 const rentStatusLabel: Record<RentStatus, string> = { paid: 'Payé', late: 'En retard', pending: 'En attente' };
 const rentStatusClass: Record<RentStatus, string> = { paid: 'text-green-700', late: 'text-orange-700', pending: 'text-zinc-600' };
+
+// Mapping du statut backend vers UI
+const mapStatutToUI = (statut: Bien['statut']): OwnerProperty['status'] => {
+  switch (statut) {
+    case 'loue': return 'rented';
+    case 'maintenance': return 'maintenance';
+    case 'reservation': return 'rented';
+    case 'vacant':
+    default: return 'vacant';
+  }
+};
+
+// Mapping Bien backend vers OwnerProperty UI
+const mapBienToOwnerProperty = (bien: Bien): OwnerProperty => ({
+  id: bien.id,
+  title: bien.titre,
+  address: bien.adresse_complete,
+  rentAmount: bien.loyer_mensuel,
+  status: mapStatutToUI(bien.statut),
+  tenantName: null, // TODO: Charger via LocationsService si nécessaire
+  rentStatus: bien.statut === 'loue' ? 'paid' : 'pending',
+  image: bien.images?.[0],
+});
 
 export default function OwnerPropertiesPage() {
   const { addNotification } = useNotifications();
   const { startManualPayment } = usePayments();
   const { exportTableReport } = useReports();
 
-  const [properties, setProperties] = useState<OwnerProperty[]>(initialProperties);
+  const [properties, setProperties] = useState<OwnerProperty[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newAddress, setNewAddress] = useState('');
   const [newRent, setNewRent] = useState('');
   const [photoName, setPhotoName] = useState('');
   const [formFeedback, setFormFeedback] = useState('');
+
+  // Charger les biens depuis le backend
+  useEffect(() => {
+    loadProperties();
+  }, []);
+
+  const loadProperties = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await PatrimoineService.getBiens();
+      if (response.success && response.data) {
+        const mapped = response.data.map(mapBienToOwnerProperty);
+        setProperties(mapped);
+      } else {
+        setError(response.message || 'Erreur lors du chargement des biens');
+      }
+    } catch (err) {
+      console.error('Erreur lors du chargement des biens:', err);
+      setError('Erreur technique lors du chargement des biens');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const lateProperties = properties.filter((p) => p.status === 'rented' && p.rentStatus === 'late');
 
@@ -65,8 +110,9 @@ export default function OwnerPropertiesPage() {
     });
 
     addNotification({
-      category: 'payment',
-      title: `Paiement enregistré: ${property.title} (${currencyFormatter.format(property.rentAmount)}).`,
+      type: 'paiement',
+      titre: `Paiement enregistré: ${property.title}`,
+      message: `Un paiement de ${currencyFormatter.format(property.rentAmount)} a été enregistré.`,
     });
   };
 
@@ -126,8 +172,29 @@ export default function OwnerPropertiesPage() {
 
       <section className="mb-6 rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
         <h2 className="mb-4 text-base font-semibold text-zinc-900">Liste des biens ({properties.length})</h2>
-        <div className="space-y-3">
-          {properties.map((property) => (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-zinc-400" />
+            <p className="mt-4 text-sm text-zinc-500">Chargement des biens...</p>
+          </div>
+        ) : error ? (
+          <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+            <p className="text-sm text-red-700">{error}</p>
+            <button
+              onClick={loadProperties}
+              className="mt-2 inline-flex items-center rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-50"
+            >
+              Réessayer
+            </button>
+          </div>
+        ) : properties.length === 0 ? (
+          <div className="py-8 text-center">
+            <p className="text-zinc-500">Aucun bien trouvé</p>
+            <p className="mt-1 text-sm text-zinc-400">Ajoutez votre premier bien ci-dessous</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {properties.map((property) => (
             <article key={property.id} className="rounded-xl border border-zinc-100 bg-zinc-50 p-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -162,7 +229,8 @@ export default function OwnerPropertiesPage() {
               </div>
             </article>
           ))}
-        </div>
+          </div>
+        )}
       </section>
 
       <section className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">

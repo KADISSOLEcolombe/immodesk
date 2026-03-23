@@ -1,67 +1,242 @@
 "use client";
 
-import { useMemo, useState } from 'react';
-import { FileUp } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { FileUp, Loader2 } from 'lucide-react';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
-import { usePayments } from '@/components/payments/PaymentProvider';
-import { useReports } from '@/components/reports/ReportProvider';
+import { ComptabiliteService } from '@/lib/comptabilite-service';
+import { PatrimoineService } from '@/lib/patrimoine-service';
+import { Paiement, Bien } from '@/types/api';
+
+interface PaymentUI {
+  id: string;
+  propertyTitle: string;
+  tenantName: string;
+  amount: number;
+  date: string;
+  month: string;
+  status: string;
+  reference?: string;
+}
+
+interface PropertyUI {
+  id: string;
+  title: string;
+  address: string;
+  tenantName: string | null;
+  rentStatus: 'paid' | 'late' | 'pending';
+}
+
+interface ReportArchive {
+  id: string;
+  title: string;
+  fileName: string;
+  generatedAt: string;
+  emailed: boolean;
+  role: 'owner';
+}
+
+const mapPaiementToUI = (paiement: Paiement): PaymentUI => ({
+  id: paiement.id,
+  propertyTitle: paiement.bail_detail?.bien_adresse || 'Bien inconnu',
+  tenantName: paiement.bail_detail?.locataire_nom || 'Locataire inconnu',
+  amount: paiement.montant,
+  date: new Date(paiement.date_paiement).toLocaleDateString('fr-TG'),
+  month: new Date(paiement.date_paiement).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
+  status: paiement.statut === 'paye' ? 'paid' : paiement.statut === 'en_retard' ? 'late' : 'pending',
+  reference: paiement.transaction_ref,
+});
+
+const mapBienToPropertyUI = (bien: Bien): PropertyUI => ({
+  id: bien.id,
+  title: bien.titre,
+  address: bien.adresse_complete,
+  tenantName: null, // À récupérer via LocationsService si nécessaire
+  rentStatus: bien.statut === 'loue' ? 'paid' : bien.statut === 'maintenance' ? 'late' : 'pending',
+});
+
+// Générer un rapport CSV côté client
+const generateCSV = (headers: string[], rows: (string | number)[][]): string => {
+  const escape = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`;
+  const headerLine = headers.map(escape).join(';');
+  const rowsLines = rows.map(row => row.map(escape).join(';'));
+  return [headerLine, ...rowsLines].join('\n');
+};
+
+// Télécharger un fichier
+const downloadFile = (content: string, fileName: string, mimeType: string) => {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
 
 export default function OwnerReportsPage() {
   const { addNotification } = useNotifications();
-  const { filterPayments } = usePayments();
-  const { archives, exportOwnerPeriodicReport, exportTableReport, emailArchiveItem } = useReports();
 
+  const [payments, setPayments] = useState<PaymentUI[]>([]);
+  const [properties, setProperties] = useState<PropertyUI[]>([]);
+  const [archives, setArchives] = useState<ReportArchive[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [reportPeriod, setReportPeriod] = useState('mars 2026');
 
-  const ownerPayments = useMemo(() => filterPayments({ status: 'all', channel: 'all' }), [filterPayments]);
-  const ownerArchives = useMemo(() => archives.filter((item) => item.role === 'owner'), [archives]);
+  // Charger les données depuis le backend
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const [paiementsResponse, biensResponse] = await Promise.all([
+        ComptabiliteService.getPaiements(),
+        PatrimoineService.getBiens(),
+      ]);
+
+      if (paiementsResponse.success && paiementsResponse.data) {
+        setPayments(paiementsResponse.data.map(mapPaiementToUI));
+      }
+
+      if (biensResponse.success && biensResponse.data) {
+        setProperties(biensResponse.data.map(mapBienToPropertyUI));
+      }
+
+      // Charger les archives depuis localStorage
+      const storedArchives = localStorage.getItem('owner_report_archives');
+      if (storedArchives) {
+        setArchives(JSON.parse(storedArchives));
+      }
+    } catch (err) {
+      console.error('Erreur lors du chargement des données:', err);
+      setError('Erreur lors du chargement des données');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const addToArchives = (archive: ReportArchive) => {
+    const newArchives = [archive, ...archives].slice(0, 20);
+    setArchives(newArchives);
+    localStorage.setItem('owner_report_archives', JSON.stringify(newArchives));
+  };
 
   const exportOwnerReport = () => {
-    const rows = ownerPayments.map((item) => ({
-      reference: item.reference,
-      date: new Date(item.createdAt).toLocaleDateString('fr-TG'),
-      property: item.propertyTitle,
-      tenant: item.tenantName,
-      month: item.month,
-      amount: item.amount,
-      status: item.status,
-    }));
+    const periodSlug = reportPeriod.replace(/\s+/g, '_').toLowerCase();
+    const fileName = `rapport_proprietaire_${periodSlug}_${new Date().toISOString().split('T')[0]}.csv`;
+    
+    const headers = ['Référence', 'Date', 'Bien', 'Locataire', 'Mois', 'Montant (XOF)', 'Statut'];
+    const rows = payments.map(item => [
+      item.reference || '-',
+      item.date,
+      item.propertyTitle,
+      item.tenantName,
+      item.month,
+      item.amount,
+      item.status === 'paid' ? 'Payé' : item.status === 'late' ? 'En retard' : 'En attente'
+    ]);
 
-    const created = exportOwnerPeriodicReport({
-      periodLabel: reportPeriod,
-      ownerName: 'Nora Agbeko',
-      generatedBy: 'owner_dashboard',
-      payments: rows,
+    const csv = generateCSV(headers, rows);
+    downloadFile(csv, fileName, 'text/csv;charset=utf-8;');
+
+    const archive: ReportArchive = {
+      id: `report-${Date.now()}`,
+      title: `Rapport période: ${reportPeriod}`,
+      fileName,
+      generatedAt: new Date().toISOString(),
+      emailed: false,
+      role: 'owner',
+    };
+    addToArchives(archive);
+
+    addNotification({ 
+      type: 'info', 
+      titre: 'Rapport généré', 
+      message: `Rapport propriétaire exporté (${fileName}).` 
     });
-
-    addNotification({ category: 'message', title: `Rapport propriétaire généré (${created.fileName}).` });
   };
 
   const exportPropertiesTable = () => {
-    exportTableReport({
+    const fileName = `tableau_biens_${new Date().toISOString().split('T')[0]}.csv`;
+    
+    const headers = ['Bien', 'Adresse', 'Locataire', 'Statut loyer'];
+    const rows = properties.map(item => [
+      item.title,
+      item.address,
+      item.tenantName || 'Aucun',
+      item.rentStatus === 'paid' ? 'Payé' : item.rentStatus === 'late' ? 'En retard' : 'En attente'
+    ]);
+
+    const csv = generateCSV(headers, rows);
+    downloadFile(csv, fileName, 'text/csv;charset=utf-8;');
+
+    const archive: ReportArchive = {
+      id: `report-${Date.now()}`,
       title: 'Tableau biens propriétaire',
+      fileName,
+      generatedAt: new Date().toISOString(),
+      emailed: false,
       role: 'owner',
-      generatedBy: 'owner_dashboard',
-      headers: ['Bien', 'Adresse', 'Locataire', 'Statut loyer'],
-      rows: [
-        ['Appartement meublé à Bè', 'Avenue de la Libération, Lomé', 'Kossi Mensah', 'paid'],
-        ['Studio moderne proche université', 'Quartier Kpota, Kara', 'Afi Koutou', 'late'],
-        ['T2 proche du marché', 'Quartier Nyivé, Kpalimé', 'Aucun', 'pending'],
-        ['Immeuble en cours de rénovation', 'Route nationale N°1, Tsévié', 'Aucun', 'pending'],
-      ],
+    };
+    addToArchives(archive);
+
+    addNotification({ 
+      type: 'info', 
+      titre: 'Tableau exporté', 
+      message: 'Tableau des biens exporté avec succès.' 
     });
-    addNotification({ category: 'message', title: 'Tableau biens exporté.' });
   };
 
   const exportPaymentsTable = () => {
-    exportTableReport({
-      title: 'Tableau paiements récents propriétaire',
+    const fileName = `tableau_paiements_${new Date().toISOString().split('T')[0]}.csv`;
+    
+    const headers = ['Bien', 'Locataire', 'Montant (XOF)', 'Date', 'Statut'];
+    const rows = payments.slice(0, 10).map(item => [
+      item.propertyTitle,
+      item.tenantName,
+      item.amount,
+      item.date,
+      item.status === 'paid' ? 'Payé' : item.status === 'late' ? 'En retard' : 'En attente'
+    ]);
+
+    const csv = generateCSV(headers, rows);
+    downloadFile(csv, fileName, 'text/csv;charset=utf-8;');
+
+    const archive: ReportArchive = {
+      id: `report-${Date.now()}`,
+      title: 'Tableau paiements récents',
+      fileName,
+      generatedAt: new Date().toISOString(),
+      emailed: false,
       role: 'owner',
-      generatedBy: 'owner_dashboard',
-      headers: ['Bien', 'Locataire', 'Montant', 'Date', 'Statut'],
-      rows: ownerPayments.slice(0, 10).map((item) => [item.propertyTitle, item.tenantName, String(item.amount), item.month, item.status]),
+    };
+    addToArchives(archive);
+
+    addNotification({ 
+      type: 'info', 
+      titre: 'Tableau exporté', 
+      message: 'Tableau des paiements exporté avec succès.' 
     });
-    addNotification({ category: 'message', title: 'Tableau paiements exporté.' });
+  };
+
+  const emailArchiveItem = (archiveId: string) => {
+    const updatedArchives = archives.map(archive => 
+      archive.id === archiveId ? { ...archive, emailed: true } : archive
+    );
+    setArchives(updatedArchives);
+    localStorage.setItem('owner_report_archives', JSON.stringify(updatedArchives));
+    
+    addNotification({ 
+      type: 'info', 
+      titre: 'Email envoyé', 
+      message: 'Le rapport a été envoyé par email.' 
+    });
   };
 
   return (
@@ -94,7 +269,7 @@ export default function OwnerReportsPage() {
           </button>
           <button
             type="button"
-            onClick={() => ownerArchives[0] && emailArchiveItem(ownerArchives[0].id)}
+            onClick={() => archives[0] && emailArchiveItem(archives[0].id)}
             className="inline-flex h-10 items-center justify-center rounded-xl border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
           >
             Envoyer dernier export (email)
@@ -103,10 +278,10 @@ export default function OwnerReportsPage() {
       </section>
 
       <section className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
-        <h2 className="mb-4 text-base font-semibold text-zinc-900">Archives ({ownerArchives.length})</h2>
+        <h2 className="mb-4 text-base font-semibold text-zinc-900">Archives ({archives.length})</h2>
         <div className="space-y-2">
-          {ownerArchives.length === 0 && <p className="text-sm text-zinc-500">Aucun rapport généré pour le moment.</p>}
-          {ownerArchives.slice(0, 8).map((item) => (
+          {archives.length === 0 && <p className="text-sm text-zinc-500">Aucun rapport généré pour le moment.</p>}
+          {archives.slice(0, 8).map((item: ReportArchive) => (
             <article key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-100 bg-zinc-50 p-3">
               <div>
                 <p className="text-sm font-medium text-zinc-900">{item.title}</p>

@@ -107,8 +107,8 @@ export class PatrimoineService {
     return await apiClient.post<any>(`/patrimoine/soumissions/${id}/publier/`);
   }
 
-  static async refuserSoumission(id: string, commentaire: string): Promise<StandardApiResponse<any>> {
-    return await apiClient.post<any>(`/patrimoine/soumissions/${id}/refuser/`, { commentaire_refus: commentaire });
+  static async refuserSoumission(id: string, justification_refus: string): Promise<StandardApiResponse<any>> {
+    return await apiClient.post<any>(`/patrimoine/soumissions/${id}/refuser/`, { justification_refus });
   }
 
   static async relancerSoumission(id: string): Promise<StandardApiResponse<any>> {

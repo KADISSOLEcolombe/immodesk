@@ -1,49 +1,52 @@
 "use client";
 
-import { createContext, ReactNode, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, ReactNode, useContext, useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import { AuthService } from '@/lib/auth-service';
 
-export type NotificationCategory = 'payment' | 'message' | 'system';
+import { NotificationsService } from '@/lib/services';
+
+export type NotificationCategory = 'quittance' | 'alerte' | 'info' | 'paiement' | 'bail';
+
+export type UserRole = 'locataire' | 'proprietaire' | 'superadmin';
+
+// Types de notifications autorisés par rôle
+const ALLOWED_TYPES_BY_ROLE: Record<UserRole, NotificationCategory[]> = {
+  locataire: ['quittance', 'paiement', 'info', 'alerte'],
+  proprietaire: ['bail', 'info', 'alerte', 'paiement'],
+  superadmin: ['quittance', 'alerte', 'info', 'paiement', 'bail'],
+};
 
 export type AppNotification = {
   id: string;
-  title: string;
-  category: NotificationCategory;
-  createdAt: string;
-  read: boolean;
+  titre: string;
+  message: string;
+  type: NotificationCategory;
+  date_envoi: string;
+  lue: boolean;
+  lien?: string;
 };
 
 type NotificationInput = {
-  title: string;
-  category: NotificationCategory;
+  titre: string;
+  message: string;
+  type: NotificationCategory;
 };
 
 type NotificationContextValue = {
   notifications: AppNotification[];
+  filteredNotifications: AppNotification[];
   unreadCount: number;
+  filteredUnreadCount: number;
+  userRole: UserRole | null;
   addNotification: (payload: NotificationInput) => void;
-  markAllAsRead: () => void;
+  markAsRead: (id: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
   refreshNotifications: () => Promise<void>;
   isLoading: boolean;
 };
 
-// Notifications initiales pour démo (seront remplacées par le backend)
-const initialNotifications: AppNotification[] = [
-  {
-    id: 'n-init-1',
-    title: 'Alerte paiement: 1 loyer en retard sur le studio de Kara.',
-    category: 'payment',
-    createdAt: '09 mars 2026 - 09:10',
-    read: false,
-  },
-  {
-    id: 'n-init-2',
-    title: 'Message admin: vérification des nouveaux dossiers propriétaires.',
-    category: 'message',
-    createdAt: '09 mars 2026 - 08:45',
-    read: false,
-  },
-];
+// Notifications initiales vides - chargées depuis le backend
+const initialNotifications: AppNotification[] = [];
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
 const STORAGE_KEY = 'immodesk.notifications.v1';
@@ -52,6 +55,14 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<AppNotification[]>(initialNotifications);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const isFetching = useRef(false);
+
+  // Charger le rôle de l'utilisateur au montage
+  useEffect(() => {
+    const role = AuthService.getUserRole() as UserRole | null;
+    setUserRole(role);
+  }, []);
 
   useEffect(() => {
     try {
@@ -81,67 +92,96 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications));
   }, [notifications, isHydrated]);
 
-  // Rafraîchir les notifications depuis le backend (quand l'API sera disponible)
-  const refreshNotifications = async () => {
+  // Rafraîchir les notifications depuis le backend - stable reference
+  const refreshNotifications = useCallback(async () => {
     if (!AuthService.isAuthenticated()) {
       return;
     }
 
+    // Avoid concurrent calls using ref (doesn't trigger re-render)
+    if (isFetching.current) {
+      return;
+    }
+
+    isFetching.current = true;
     setIsLoading(true);
     try {
-      // TODO: Implémenter l'appel API quand le endpoint notifications sera disponible
-      // const response = await apiClient.get('/notifications/');
-      // if (response.success && response.data) {
-      //   setNotifications(response.data);
-      // }
-      
-      // Pour l'instant, on garde les notifications locales
-      console.log('Rafraîchissement des notifications (backend endpoint pas encore disponible)');
+      const response = await NotificationsService.getNotifications();
+      if (response.success && response.data) {
+        setNotifications(response.data);
+      }
     } catch (error) {
       console.error('Erreur lors du rafraîchissement des notifications:', error);
     } finally {
       setIsLoading(false);
+      isFetching.current = false;
     }
-  };
+  }, []);
 
   const addNotification = (payload: NotificationInput) => {
     const now = new Date();
-    const createdAt = now.toLocaleString('fr-TG', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    const date_envoi = now.toISOString();
 
     setNotifications((current) => [
       {
         id: `n-${Date.now()}`,
-        title: payload.title,
-        category: payload.category,
-        createdAt,
-        read: false,
+        titre: payload.titre,
+        message: payload.message,
+        type: payload.type,
+        date_envoi,
+        lue: false,
       },
       ...current,
     ]);
   };
 
-  const markAllAsRead = () => {
-    setNotifications((current) => current.map((item) => ({ ...item, read: true })));
+  const markAsRead = async (id: string) => {
+    try {
+      const response = await NotificationsService.markAsRead(id);
+      if (response.success) {
+        setNotifications((current) =>
+          current.map((item) => (item.id === id ? { ...item, lue: true } : item))
+        );
+      }
+    } catch (error) {
+      console.error('Erreur lors du marquage comme lu:', error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      const response = await NotificationsService.markAllAsRead();
+      if (response.success) {
+        setNotifications((current) => current.map((item) => ({ ...item, lue: true })));
+      }
+    } catch (error) {
+      console.error('Erreur lors du marquage de toutes les notifications:', error);
+    }
   };
 
   const value = useMemo(() => {
-    const unreadCount = notifications.filter((item) => !item.read).length;
+    // Filtrer les notifications selon le rôle
+    const allowedTypes = userRole ? ALLOWED_TYPES_BY_ROLE[userRole] : [];
+    const filteredNotifications = notifications.filter((item) =>
+      allowedTypes.includes(item.type)
+    );
+
+    const unreadCount = notifications.filter((item) => !item.lue).length;
+    const filteredUnreadCount = filteredNotifications.filter((item) => !item.lue).length;
 
     return {
       notifications,
+      filteredNotifications,
       unreadCount,
+      filteredUnreadCount,
+      userRole,
       addNotification,
+      markAsRead,
       markAllAsRead,
       refreshNotifications,
       isLoading,
     };
-  }, [notifications, isLoading]);
+  }, [notifications, isLoading, userRole]);
 
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
 }

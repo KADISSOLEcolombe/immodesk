@@ -22,9 +22,19 @@ export function BalanceCard({ periodeDebut, periodeFin }: BalanceCardProps) {
   const loadBalance = async () => {
     try {
       setIsLoading(true);
-      const params: { periode_debut?: string; periode_fin?: string } = {};
-      if (periodeDebut) params.periode_debut = periodeDebut;
-      if (periodeFin) params.periode_fin = periodeFin;
+      
+      // Définir les dates par défaut si non fournies (début et fin du mois courant)
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const defaultDebut = `${year}-${month}-01`;
+      const lastDay = new Date(year, now.getMonth() + 1, 0).getDate();
+      const defaultFin = `${year}-${month}-${String(lastDay).padStart(2, '0')}`;
+      
+      const params: { periode_debut: string; periode_fin: string } = {
+        periode_debut: periodeDebut || defaultDebut,
+        periode_fin: periodeFin || defaultFin,
+      };
       
       const response = await ComptabiliteService.getBalanceGlobale(params);
       

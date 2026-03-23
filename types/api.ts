@@ -88,24 +88,39 @@ export interface Bien {
   updated_at: string;
 }
 
+// Données du formulaire soumis par le propriétaire
+export interface DonneesFormulaireSoumission {
+  adresse: string;
+  categorie_id: number;
+  loyer_hc: number;
+  charges?: number;
+  equipements?: string[];
+  latitude?: number;
+  longitude?: number;
+  lien_maps?: string;
+  immeuble_id?: number;
+  description?: string;
+  photos?: string[];
+  amenagement?: string;
+  type_logement?: string;
+  categorie_logement?: string;
+  nb_pieces?: number;
+  surface_m2?: number;
+  standing?: string;
+  etage?: number;
+  accessibilite?: string[];
+  espaces_exterieurs?: string[];
+  [key: string]: any;
+}
+
 export interface SoumissionBien {
   id: string;
   proprietaire: string;
-  titre: string;
-  description: string;
-  adresse_complete: string;
-  surface: number;
-  nombre_pieces: number;
-  nombre_chambres: number;
-  loyer_mensuel: number;
-  charges_mensuelles: number;
-  depot_garantie: number;
-  meuble: boolean;
-  images: string[];
-  statut: 'brouillon' | 'soumis' | 'publie' | 'refuse';
-  commentaire_refus: string | null;
-  date_soumission: string;
-  date_publication: string | null;
+  proprietaire_email?: string;
+  bien_id?: string | null;
+  donnees_formulaire: DonneesFormulaireSoumission;
+  statut: 'en_examen' | 'publie' | 'refuse';
+  justification_refus: string;
   created_at: string;
   updated_at: string;
 }

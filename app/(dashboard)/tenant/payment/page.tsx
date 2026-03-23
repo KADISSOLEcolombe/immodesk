@@ -1,25 +1,21 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle, AlertCircle, CreditCard, Smartphone, Wallet, Loader2, CheckCircle2, ArrowRight, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, CheckCircle, AlertCircle, CreditCard, Smartphone, Wallet, Loader2, CheckCircle2, ArrowRight, ShieldCheck, Home, Calendar } from 'lucide-react';
 import { PaiementEnLigneService, InitierPaiementData } from '@/lib/paiement-en-ligne-service';
 import { TransactionsList } from '@/components/paiement/TransactionsList';
-import { TransactionPaiement, MoyenPaiement } from '@/types/api';
+import { TransactionPaiement, MoyenPaiement, Bail } from '@/types/api';
 import { formatCurrency } from '@/lib/utils';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
 import { jsPDF } from 'jspdf';
+import { LocationsService } from '@/lib/locations-service';
 
 const currencyFormatter = new Intl.NumberFormat('fr-TG', {
   style: 'currency',
   currency: 'XOF',
   maximumFractionDigits: 0,
 });
-
-const baseRent = 180000;
-const charges = 15000;
-const tenantName = 'Kossi Mensah';
-const propertyTitle = 'Appartement meublé à Bè';
 
 const moyensPaiement = [
   { 
@@ -42,142 +38,231 @@ const moyensPaiement = [
   },
 ];
 
+// Map UI payment method to API payment method
+const mapPaymentMethod = (method: 'moov' | 'mix' | 'card'): MoyenPaiement => {
+  switch (method) {
+    case 'moov': return 'moov_money';
+    case 'mix': return 'mixx_by_yas';
+    case 'card': return 'carte_bancaire';
+    default: return 'moov_money';
+  }
+};
+
+// Get month options for next 12 months
+const getMonthOptions = () => {
+  const options = [];
+  const today = new Date();
+  for (let i = 0; i < 12; i++) {
+    const date = new Date(today.getFullYear(), today.getMonth() + i, 1);
+    const value = date.toISOString().slice(0, 10); // YYYY-MM-DD
+    const label = date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    options.push({ value, label });
+  }
+  return options;
+};
+
 export default function TenantPaymentPage() {
   const { addNotification } = useNotifications();
-  const [moyenSelectionne, setMoyenSelectionne] = useState<MoyenPaiement>('moov_money');
-  const [montant, setMontant] = useState(180000);
-  const [telephone, setTelephone] = useState('');
-  const [numeroCarte, setNumeroCarte] = useState('');
-  const [expiryCarte, setExpiryCarte] = useState('');
-  const [cvvCarte, setCvvCarte] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [transactionEnCours, setTransactionEnCours] = useState<TransactionPaiement | null>(null);
-  const [statusVerification, setStatusVerification] = useState<'idle' | 'checking' | 'success' | 'failed'>('idle');
-  const [error, setError] = useState<string | null>(null);
-  const [month, setMonth] = useState('mars 2026');
-  const [includeCharges, setIncludeCharges] = useState(false);
-  type PaymentMethod = 'mix' | 'moov' | 'tmoney' | 'card';
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('moov');
+  const [bail, setBail] = useState<Bail | null>(null);
+  const [isLoadingBail, setIsLoadingBail] = useState(true);
+  const [paymentMethod, setPaymentMethod] = useState<'moov' | 'mix' | 'card'>('moov');
   const [mobileNumber, setMobileNumber] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvv, setCardCvv] = useState('');
   const [smsCode, setSmsCode] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [transactionEnCours, setTransactionEnCours] = useState<TransactionPaiement | null>(null);
   const [paymentInfo, setPaymentInfo] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [pendingMobileId, setPendingMobileId] = useState<string | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState(getMonthOptions()[0].value);
+  const [includeCharges, setIncludeCharges] = useState(false);
 
+  // Fetch bail info on mount
+  useEffect(() => {
+    loadBailInfo();
+  }, []);
+
+  const loadBailInfo = async () => {
+    setIsLoadingBail(true);
+    try {
+      // Get tenant's bails - take the first active one
+      const response = await LocationsService.getMonBail();
+      if (response.success && response.data) {
+        setBail(response.data);
+      }
+    } catch (err) {
+      console.error('Error loading bail:', err);
+    } finally {
+      setIsLoadingBail(false);
+    }
+  };
+
+  const baseRent = bail?.loyer_mensuel || 0;
+  const charges = bail?.charges_mensuelles || 0;
   const totalToPay = includeCharges ? baseRent + charges : baseRent;
 
-  // Mock data - TODO: Récupérer depuis le backend
-  const bailId = 'bail-123';
-  const moisConcerne = new Date().toISOString().slice(0, 7) + '-01';
-
-  const handleInitierPaiement = async () => {
-    setError(null);
+  const validateForm = (): boolean => {
+    if (!bail) {
+      setPaymentError('Aucun bail actif trouvé');
+      return false;
+    }
     
-    if (montant <= 0) {
-      setError('Le montant doit être supérieur à 0');
-      return;
+    if (totalToPay <= 0) {
+      setPaymentError('Le montant doit être supérieur à 0');
+      return false;
     }
 
-    const moyen = moyensPaiement.find(m => m.id === moyenSelectionne);
-    if ((moyenSelectionne === 'moov_money' || moyenSelectionne === 'mixx_by_yas') && !telephone) {
-      setError('Veuillez saisir votre numéro de téléphone');
-      return;
+    if ((paymentMethod === 'moov' || paymentMethod === 'mix') && !mobileNumber) {
+      setPaymentError('Veuillez saisir votre numéro de téléphone');
+      return false;
     }
 
-    if (moyenSelectionne === 'carte_bancaire' && (!numeroCarte || !expiryCarte || !cvvCarte)) {
-      setError('Veuillez compléter les informations de carte');
-      return;
+    if (paymentMethod === 'card') {
+      if (!cardNumber || cardNumber.length < 16) {
+        setPaymentError('Veuillez saisir un numéro de carte valide (16 chiffres)');
+        return false;
+      }
+      if (!cardExpiry || !cardExpiry.match(/^\d{2}\/\d{2}$/)) {
+        setPaymentError('Veuillez saisir une date d\'expiration valide (MM/AA)');
+        return false;
+      }
+      if (!cardCvv || cardCvv.length < 3) {
+        setPaymentError('Veuillez saisir le CVV (3 chiffres)');
+        return false;
+      }
     }
+
+    return true;
+  };
+
+  const handlePay = async () => {
+    setPaymentError(null);
+    setPaymentInfo(null);
+
+    if (!validateForm()) return;
 
     setIsLoading(true);
+    
     try {
+      const moyenPaiement = mapPaymentMethod(paymentMethod);
       const data: InitierPaiementData = {
-        bail: bailId,
-        montant,
-        moyen_paiement: moyenSelectionne,
-        numero_telephone: (moyenSelectionne === 'moov_money' || moyenSelectionne === 'mixx_by_yas') ? telephone : undefined,
-        mois_concerne: moisConcerne,
+        bail_id: bail!.id,
+        montant: totalToPay,
+        moyen_paiement: moyenPaiement,
+        mois_concerne: selectedMonth,
+        ...(paymentMethod === 'moov' || paymentMethod === 'mix' 
+          ? { numero_telephone: formatPhoneNumber(mobileNumber) }
+          : {
+              numero_carte: cardNumber.replace(/\s/g, ''),
+              date_expiration: cardExpiry,
+              cvv: cardCvv,
+            }
+        ),
       };
 
       const response = await PaiementEnLigneService.initierPaiement(data);
       
       if (response.success && response.data) {
         setTransactionEnCours(response.data);
-        setStatusVerification('checking');
-        addNotification({ 
-          category: 'payment', 
-          title: `Paiement initié via ${moyen?.label}` 
-        });
-        // Vérifier le statut après un délai
-        setTimeout(() => verifierStatut(response.data!.reference), 3000);
+        
+        if (response.data.statut === 'valide') {
+          setPaymentInfo('Paiement validé avec succès !');
+          addNotification({
+            type: 'info',
+            titre: 'Paiement effectué avec succès',
+            message: 'Votre paiement a été validé.',
+          });
+        } else if (response.data.statut === 'echoue') {
+          setPaymentError(response.data.message_retour || 'Le paiement a échoué');
+        } else if (response.data.statut === 'en_attente') {
+          // For mobile money, show SMS verification
+          if (paymentMethod === 'moov' || paymentMethod === 'mix') {
+            setPendingMobileId(response.data.id);
+          } else {
+            // For card, poll for status
+            pollTransactionStatus(response.data.reference);
+          }
+        }
       } else {
-        setError(response.message || 'Erreur lors de l\'initiation du paiement');
+        setPaymentError(response.message || 'Erreur lors du paiement');
       }
     } catch (err) {
-      setError('Erreur technique lors du paiement');
+      setPaymentError('Erreur technique lors du paiement. Veuillez réessayer.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const verifierStatut = async (reference: string) => {
-    try {
-      const response = await PaiementEnLigneService.getStatutTransaction(reference);
-      if (response.success && response.data) {
-        setTransactionEnCours(response.data);
-        if (response.data.statut === 'valide') {
-          setStatusVerification('success');
-          addNotification({ 
-            category: 'payment', 
-            title: 'Paiement confirmé avec succès !' 
-          });
-        } else if (response.data.statut === 'echoue' || response.data.statut === 'annule') {
-          setStatusVerification('failed');
-          setError(response.data.message_retour || 'Le paiement a échoué');
-        } else {
-          // Toujours en attente, vérifier à nouveau
-          setTimeout(() => verifierStatut(reference), 3000);
+  const pollTransactionStatus = async (reference: string) => {
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    const checkStatus = async () => {
+      if (attempts >= maxAttempts) return;
+      attempts++;
+      
+      try {
+        const response = await PaiementEnLigneService.getStatutTransaction(reference);
+        if (response.success && response.data) {
+          setTransactionEnCours(response.data);
+          
+          if (response.data.statut === 'valide') {
+            setPaymentInfo('Paiement validé avec succès !');
+            addNotification({
+              type: 'paiement',
+              titre: 'Paiement confirmé',
+              message: 'La transaction a été validée.',
+            });
+            return;
+          } else if (response.data.statut === 'echoue' || response.data.statut === 'annule') {
+            setPaymentError(response.data.message_retour || 'Le paiement a échoué');
+            return;
+          }
         }
+        
+        // Continue polling
+        setTimeout(checkStatus, 3000);
+      } catch (err) {
+        console.error('Error checking status:', err);
       }
-    } catch (err) {
-      setStatusVerification('failed');
-      setError('Erreur lors de la vérification du statut');
-    }
+    };
+    
+    checkStatus();
   };
 
-  const handleAnnuler = async () => {
+  const formatPhoneNumber = (phone: string): string => {
+    // Ensure phone starts with +
+    let formatted = phone.replace(/\s/g, '');
+    if (!formatted.startsWith('+')) {
+      formatted = '+228' + formatted; // Default to Togo country code
+    }
+    return formatted;
+  };
+
+  const handleConfirmSms = async () => {
     if (!transactionEnCours) return;
     
-    try {
-      await PaiementEnLigneService.annulerTransaction(transactionEnCours.reference);
-      setTransactionEnCours(null);
-      setStatusVerification('idle');
-      addNotification({ 
-        category: 'payment', 
-        title: 'Transaction annulée' 
-      });
-    } catch (err) {
-      setError('Erreur lors de l\'annulation');
-    }
-  };
-
-  const resetForm = () => {
-    setTransactionEnCours(null);
-    setStatusVerification('idle');
-    setError(null);
-  };
-
-  const handlePay = async () => {
-    setPaymentInfo('Paiement effectué avec succès !');
-    setPaymentError(null);
-  };
-
-  const handleConfirmSms = () => {
+    // In a real implementation, this would verify the SMS code
+    // For now, we just poll for the transaction status
     setPendingMobileId(null);
-    setPaymentInfo('Paiement confirmé par SMS');
+    pollTransactionStatus(transactionEnCours.reference);
+  };
+
+  const handleDownloadReceipt = () => {
+    if (!transactionEnCours) return;
+    
+    const doc = new jsPDF();
+    doc.setFontSize(16);
+    doc.text('Reçu de Paiement - ImmoDesk', 20, 20);
+    doc.setFontSize(12);
+    doc.text(`Référence: ${transactionEnCours.reference}`, 20, 40);
+    doc.text(`Date: ${new Date().toLocaleDateString('fr-FR')}`, 20, 50);
+    doc.text(`Montant: ${formatCurrency(transactionEnCours.montant)}`, 20, 60);
+    doc.text(`Moyen: ${transactionEnCours.moyen_paiement}`, 20, 70);
+    doc.text(`Mois: ${new Date(transactionEnCours.mois_concerne).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}`, 20, 80);
+    doc.save(`recu-paiement-${transactionEnCours.reference}.pdf`);
   };
 
   return (
@@ -190,7 +275,19 @@ export default function TenantPaymentPage() {
         <p className="text-zinc-500 mt-2">Sécurisé, rapide et sans frais supplémentaires.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {isLoadingBail ? (
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
+          <span className="ml-3 text-zinc-500">Chargement de vos informations...</span>
+        </div>
+      ) : !bail ? (
+        <div className="flex flex-col items-center justify-center h-64 text-zinc-500">
+          <Home className="w-12 h-12 mb-4 text-zinc-300" />
+          <p className="text-lg font-medium">Aucun bail actif trouvé</p>
+          <p className="text-sm">Veuillez contacter votre propriétaire pour plus d'informations.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Formulaire de paiement */}
         <div className="lg:col-span-2 space-y-6">
           <section className="rounded-3xl border border-zinc-100 bg-white p-6 sm:p-8 shadow-xl shadow-zinc-200/40">
@@ -204,13 +301,13 @@ export default function TenantPaymentPage() {
                   <label className="flex flex-col gap-2">
                     <span className="text-sm font-medium text-zinc-700">Mois concerné</span>
                     <select 
-                      value={month} 
-                      onChange={(e) => setMonth(e.target.value)} 
+                      value={selectedMonth} 
+                      onChange={(e) => setSelectedMonth(e.target.value)} 
                       className="h-12 rounded-xl border border-zinc-200 bg-zinc-50 px-4 text-sm text-zinc-900 outline-none transition-all focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/5 appearance-none cursor-pointer"
                     >
-                      <option value="mars 2026">Mars 2026</option>
-                      <option value="avril 2026">Avril 2026</option>
-                      <option value="mai 2026">Mai 2026</option>
+                      {getMonthOptions().map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
                     </select>
                   </label>
 
@@ -235,7 +332,7 @@ export default function TenantPaymentPage() {
                 <h3 className="text-lg font-semibold text-zinc-900 border-b border-zinc-100 pb-2">Moyen de paiement</h3>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {(['mix', 'moov', 'tmoney', 'card'] as PaymentMethod[]).map((method) => {
+                  {(['mix', 'moov', 'card'] as const).map((method) => {
                     const isSelected = paymentMethod === method;
                     return (
                       <label 
@@ -277,7 +374,7 @@ export default function TenantPaymentPage() {
 
               {/* Informations de paiement */}
               <div className="space-y-4 bg-zinc-50 p-6 rounded-2xl border border-zinc-100">
-                {(paymentMethod === 'mix' || paymentMethod === 'moov' || paymentMethod === 'tmoney') && (
+                {(paymentMethod === 'mix' || paymentMethod === 'moov') && (
                   <div>
                     <label className="block text-sm font-medium text-zinc-700 mb-2">Numéro de téléphone mobile money</label>
                     <div className="relative">
@@ -425,6 +522,7 @@ export default function TenantPaymentPage() {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }
