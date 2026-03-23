@@ -1,28 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from 'react';
-import { BarChart3, Loader2, AlertCircle, TrendingUp, Home, Users, DollarSign, Building } from 'lucide-react';
-import { StatsService, DashboardStats, MonthlyRevenue, OccupationRate, FinancialMetrics } from '@/lib/stats-service';
-import { ComptabiliteService } from '@/lib/comptabilite-service';
-import { Paiement } from '@/types/api';
+import { AlertCircle, BarChart3, Building, CreditCard, Loader2, TrendingUp, Users, Video } from 'lucide-react';
+import { AdminGlobalStats, StatsService } from '@/lib/stats-service';
 
 interface StatsData {
-  dashboard: DashboardStats | null;
-  monthlyRevenue: MonthlyRevenue[];
-  occupationRates: OccupationRate[];
-  financialMetrics: FinancialMetrics | null;
-  payments: Paiement[];
+  global: AdminGlobalStats | null;
 }
 
 export default function AdminStatsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<StatsData>({
-    dashboard: null,
-    monthlyRevenue: [],
-    occupationRates: [],
-    financialMetrics: null,
-    payments: [],
+    global: null,
   });
 
   const currencyFormatter = new Intl.NumberFormat('fr-TG', { style: 'currency', currency: 'XOF', maximumFractionDigits: 0 });
@@ -31,22 +21,15 @@ export default function AdminStatsPage() {
     setLoading(true);
     setError(null);
     try {
-      // Fetch all stats in parallel
-      const [dashboardRes, monthlyRes, occupationRes, financialRes, paymentsRes] = await Promise.all([
-        StatsService.getDashboard(),
-        StatsService.getMonthlyRevenue(new Date().getFullYear()),
-        StatsService.getOccupationRates(),
-        StatsService.getFinancialMetrics(),
-        ComptabiliteService.getPaiements(),
-      ]);
+      const globalRes = await StatsService.getAdminGlobalStats();
 
       setStats({
-        dashboard: dashboardRes.success ? dashboardRes.data || null : null,
-        monthlyRevenue: monthlyRes.success ? monthlyRes.data || [] : [],
-        occupationRates: occupationRes.success ? occupationRes.data || [] : [],
-        financialMetrics: financialRes.success ? financialRes.data || null : null,
-        payments: paymentsRes.success ? paymentsRes.data || [] : [],
+        global: globalRes.success ? globalRes.data || null : null,
       });
+
+      if (!globalRes.success) {
+        setError(globalRes.message || 'Erreur lors du chargement des statistiques');
+      }
     } catch (err) {
       setError('Erreur lors du chargement des statistiques');
       console.error('Stats fetch error:', err);
@@ -61,33 +44,36 @@ export default function AdminStatsPage() {
 
   // Calculate derived stats
   const derivedStats = useMemo(() => {
-    const d = stats.dashboard;
-    if (!d) return null;
+    const g = stats.global;
+    if (!g) return null;
 
-    // Count payment issues from real payments
-    const latePayments = stats.payments.filter(p => p.statut === 'en_retard');
-    const unpaidPayments = stats.payments.filter(p => p.statut === 'impaye');
-    const paymentIssues = [...latePayments, ...unpaidPayments];
-    const paymentIssuesVolume = paymentIssues.reduce((sum, p) => sum + p.montant, 0);
-
-    // Calculate occupancy rate
-    const occupancyRate = d.total_biens > 0 ? (d.biens_loues / d.total_biens) * 100 : 0;
+    const montantTotal = Number(g.paiements.montant_total || '0');
+    const paymentIssueCount = g.paiements.en_attente + g.paiements.echoue;
+    const conversionVisites = g.visites.total_visites > 0
+      ? (g.visites.utilisees / g.visites.total_visites) * 100
+      : 0;
 
     return {
-      totalBiens: d.total_biens,
-      biensLoues: d.biens_loues,
-      biensVacants: d.biens_vacants,
-      totalLocataires: d.total_locataires,
-      bauxActifs: d.baux_actifs,
-      revenusMois: d.revenus_mois,
-      revenusAnnee: d.revenus_annee,
-      depensesMois: d.depenses_mois,
-      beneficeNet: d.benefice_net,
-      tauxOccupation: occupancyRate,
-      paymentIssuesCount: paymentIssues.length,
-      paymentIssuesVolume,
-      loyerMoyen: stats.financialMetrics?.loyer_moyen || 0,
-      tauxImpayes: stats.financialMetrics?.taux_impayes || 0,
+      totalUtilisateurs: g.utilisateurs.total_utilisateurs,
+      totalProprietaires: g.utilisateurs.proprietaires,
+      totalLocataires: g.utilisateurs.locataires,
+      nouveauxUtilisateurs: g.utilisateurs.nouveaux_ce_mois,
+      totalTransactions: g.paiements.total_transactions,
+      paiementsValides: g.paiements.valide,
+      paiementsEnAttente: g.paiements.en_attente,
+      paiementsEchoues: g.paiements.echoue,
+      paiementsAnnules: g.paiements.annule,
+      paiementsManuels: g.paiements.total_manuel,
+      montantTransactions: montantTotal,
+      paymentIssuesCount: paymentIssueCount,
+      totalVisites: g.visites.total_visites,
+      visitesUtilisees: g.visites.utilisees,
+      visitesNonUtilisees: g.visites.non_utilisees,
+      conversionVisites,
+      totalSoumissions: g.soumissions.total_soumissions,
+      soumissionsEnExamen: g.soumissions.en_examen,
+      soumissionsPubliees: g.soumissions.publie,
+      soumissionsRefusees: g.soumissions.refuse,
     };
   }, [stats]);
 
@@ -97,59 +83,53 @@ export default function AdminStatsPage() {
 
     return [
       {
-        label: 'Total Biens',
-        value: derivedStats.totalBiens,
-        sub: `${derivedStats.biensLoues} loués, ${derivedStats.biensVacants} vacants`,
-        icon: Home,
-      },
-      {
-        label: 'Total Locataires',
-        value: derivedStats.totalLocataires,
-        sub: `${derivedStats.bauxActifs} baux actifs`,
+        label: 'Utilisateurs actifs',
+        value: derivedStats.totalUtilisateurs,
+        sub: `${derivedStats.totalProprietaires} propriétaires · ${derivedStats.totalLocataires} locataires`,
         icon: Users,
       },
       {
-        label: "Taux d'occupation",
-        value: `${derivedStats.tauxOccupation.toFixed(1)}%`,
-        sub: 'Biens actuellement loués',
-        icon: Building,
-      },
-      {
-        label: 'Revenus mensuels',
-        value: currencyFormatter.format(derivedStats.revenusMois),
-        sub: `Loyer moyen: ${currencyFormatter.format(derivedStats.loyerMoyen)}`,
-        icon: DollarSign,
-      },
-      {
-        label: 'Revenus annuels',
-        value: currencyFormatter.format(derivedStats.revenusAnnee),
-        sub: 'Cette année',
+        label: 'Nouveaux utilisateurs (mois)',
+        value: derivedStats.nouveauxUtilisateurs,
+        sub: 'Créés ce mois-ci',
         icon: TrendingUp,
       },
       {
-        label: 'Bénéfice net',
-        value: currencyFormatter.format(derivedStats.beneficeNet),
-        sub: 'Après dépenses',
-        icon: DollarSign,
+        label: 'Transactions',
+        value: derivedStats.totalTransactions,
+        sub: `${derivedStats.paiementsValides} validées`,
+        icon: CreditCard,
       },
       {
-        label: 'Dépenses mensuelles',
-        value: currencyFormatter.format(derivedStats.depensesMois),
-        sub: 'Ce mois',
-        icon: DollarSign,
+        label: 'Montant validé',
+        value: currencyFormatter.format(derivedStats.montantTransactions),
+        sub: `${derivedStats.paiementsManuels} paiements manuels`,
+        icon: CreditCard,
       },
       {
         label: 'Incidents paiement',
         value: derivedStats.paymentIssuesCount,
-        sub: `Volume: ${currencyFormatter.format(derivedStats.paymentIssuesVolume)}`,
+        sub: `${derivedStats.paiementsEchoues} échoués · ${derivedStats.paiementsEnAttente} en attente`,
         highlight: true,
         icon: AlertCircle,
       },
       {
-        label: "Taux d'impayés",
-        value: `${(derivedStats.tauxImpayes * 100).toFixed(1)}%`,
-        sub: 'Des paiements',
-        icon: TrendingUp,
+        label: 'Visites virtuelles',
+        value: derivedStats.totalVisites,
+        sub: `${derivedStats.visitesUtilisees} utilisées`,
+        icon: Video,
+      },
+      {
+        label: 'Conversion visites',
+        value: `${derivedStats.conversionVisites.toFixed(1)}%`,
+        sub: `${derivedStats.visitesNonUtilisees} non utilisées`,
+        icon: Building,
+      },
+      {
+        label: 'Soumissions à traiter',
+        value: derivedStats.soumissionsEnExamen,
+        sub: `${derivedStats.totalSoumissions} au total`,
+        icon: Users,
       },
     ];
   }, [derivedStats]);
@@ -205,77 +185,80 @@ export default function AdminStatsPage() {
         </section>
       )}
 
-      {/* Monthly Revenue Chart */}
-      {!loading && !error && stats.monthlyRevenue.length > 0 && (
+      {/* Paiements */}
+      {!loading && !error && derivedStats && (
         <section className="mt-6 rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-base font-semibold text-zinc-900">Évolution mensuelle</h2>
+          <h2 className="mb-4 text-base font-semibold text-zinc-900">Détail transactions</h2>
           <div className="space-y-2">
-            {stats.monthlyRevenue.map((month) => (
-              <div key={month.mois} className="flex items-center justify-between rounded-xl bg-zinc-50 p-3">
-                <span className="text-sm font-medium text-zinc-900">{month.mois}</span>
-                <div className="flex items-center gap-4">
-                  <span className="text-sm text-zinc-500">
-                    Revenus: {currencyFormatter.format(month.revenus)}
-                  </span>
-                  <span className="text-sm text-zinc-500">
-                    Dépenses: {currencyFormatter.format(month.depenses)}
-                  </span>
-                  <span className={`text-sm font-medium ${month.benefice >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {month.benefice >= 0 ? '+' : '-'}{currencyFormatter.format(Math.abs(month.benefice))}
-                  </span>
-                </div>
-              </div>
-            ))}
+            <div className="flex items-center justify-between rounded-xl bg-zinc-50 p-3">
+              <span className="text-sm font-medium text-zinc-900">Paiements validés</span>
+              <span className="text-sm text-green-700">{derivedStats.paiementsValides}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-zinc-50 p-3">
+              <span className="text-sm font-medium text-zinc-900">Paiements en attente</span>
+              <span className="text-sm text-orange-700">{derivedStats.paiementsEnAttente}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-zinc-50 p-3">
+              <span className="text-sm font-medium text-zinc-900">Paiements échoués</span>
+              <span className="text-sm text-red-700">{derivedStats.paiementsEchoues}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-zinc-50 p-3">
+              <span className="text-sm font-medium text-zinc-900">Paiements annulés</span>
+              <span className="text-sm text-zinc-700">{derivedStats.paiementsAnnules}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-zinc-50 p-3">
+              <span className="text-sm font-medium text-zinc-900">Montant total validé</span>
+              <span className="text-sm font-semibold text-zinc-900">{currencyFormatter.format(derivedStats.montantTransactions)}</span>
+            </div>
           </div>
         </section>
       )}
 
-      {/* Occupation Rates */}
-      {!loading && !error && stats.occupationRates.length > 0 && (
+      {/* Soumissions */}
+      {!loading && !error && derivedStats && (
         <section className="mt-6 rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-base font-semibold text-zinc-900">Taux d'occupation par bien</h2>
+          <h2 className="mb-4 text-base font-semibold text-zinc-900">Détail soumissions</h2>
           <div className="space-y-2">
-            {stats.occupationRates.slice(0, 5).map((rate) => (
-              <div key={rate.bien_id} className="flex items-center justify-between rounded-xl bg-zinc-50 p-3">
-                <div>
-                  <p className="text-sm font-medium text-zinc-900">{rate.adresse}</p>
-                  <p className="text-xs text-zinc-500">{rate.jours_loues} jours loués / {rate.jours_vacants} jours vacants</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-24 rounded-full bg-zinc-200 overflow-hidden">
-                    <div
-                      className="h-full bg-zinc-700 transition-all"
-                      style={{ width: `${rate.taux_occupation}%` }}
-                    />
-                  </div>
-                  <span className="text-sm font-medium text-zinc-900">{rate.taux_occupation.toFixed(0)}%</span>
-                </div>
-              </div>
-            ))}
+            <div className="flex items-center justify-between rounded-xl bg-zinc-50 p-3">
+              <span className="text-sm font-medium text-zinc-900">Total</span>
+              <span className="text-sm text-zinc-900">{derivedStats.totalSoumissions}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-zinc-50 p-3">
+              <span className="text-sm font-medium text-zinc-900">En examen</span>
+              <span className="text-sm text-orange-700">{derivedStats.soumissionsEnExamen}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-zinc-50 p-3">
+              <span className="text-sm font-medium text-zinc-900">Publiées</span>
+              <span className="text-sm text-green-700">{derivedStats.soumissionsPubliees}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-zinc-50 p-3">
+              <span className="text-sm font-medium text-zinc-900">Refusées</span>
+              <span className="text-sm text-red-700">{derivedStats.soumissionsRefusees}</span>
+            </div>
           </div>
         </section>
       )}
 
-      {/* Financial Metrics */}
-      {!loading && !error && stats.financialMetrics && (
+      {/* Visites */}
+      {!loading && !error && derivedStats && (
         <section className="mt-6 rounded-2xl border border-black/5 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 text-base font-semibold text-zinc-900">Métriques financières</h2>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-xl bg-zinc-50 p-4">
-              <p className="text-xs text-zinc-500">Loyer moyen</p>
-              <p className="text-lg font-bold text-zinc-900">{currencyFormatter.format(stats.financialMetrics.loyer_moyen)}</p>
+          <h2 className="mb-4 text-base font-semibold text-zinc-900">Détail visites virtuelles</h2>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between rounded-xl bg-zinc-50 p-3">
+              <span className="text-sm font-medium text-zinc-900">Total visites</span>
+              <span className="text-sm text-zinc-900">{derivedStats.totalVisites}</span>
             </div>
-            <div className="rounded-xl bg-zinc-50 p-4">
-              <p className="text-xs text-zinc-500">Durée moyenne bail</p>
-              <p className="text-lg font-bold text-zinc-900">{stats.financialMetrics.duree_moyenne_bail} mois</p>
+            <div className="flex items-center justify-between rounded-xl bg-zinc-50 p-3">
+              <span className="text-sm font-medium text-zinc-900">Visites utilisées</span>
+              <span className="text-sm text-green-700">{derivedStats.visitesUtilisees}</span>
             </div>
-            <div className="rounded-xl bg-zinc-50 p-4">
-              <p className="text-xs text-zinc-500">Taux impayés</p>
-              <p className="text-lg font-bold text-orange-600">{(stats.financialMetrics.taux_impayes * 100).toFixed(1)}%</p>
+            <div className="flex items-center justify-between rounded-xl bg-zinc-50 p-3">
+              <span className="text-sm font-medium text-zinc-900">Visites non utilisées</span>
+              <span className="text-sm text-zinc-700">{derivedStats.visitesNonUtilisees}</span>
             </div>
-            <div className="rounded-xl bg-zinc-50 p-4">
-              <p className="text-xs text-zinc-500">Retard moyen paiement</p>
-              <p className="text-lg font-bold text-zinc-900">{stats.financialMetrics.retard_moyen_paiement} jours</p>
+            <div className="flex items-center justify-between rounded-xl bg-zinc-50 p-3">
+              <span className="text-sm font-medium text-zinc-900">Taux de conversion</span>
+              <span className="text-sm font-semibold text-zinc-900">{derivedStats.conversionVisites.toFixed(1)}%</span>
             </div>
           </div>
         </section>

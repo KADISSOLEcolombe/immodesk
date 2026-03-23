@@ -1,7 +1,13 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
 
+type RetryableRequestConfig = {
+  _retry?: boolean;
+  headers?: Record<string, string>;
+  url?: string;
+};
+
 // Types pour les réponses standardisées du backend Django
-export interface StandardApiResponse<T = any> {
+export interface StandardApiResponse<T = unknown> {
   success: boolean;
   code: string;
   message: string;
@@ -13,7 +19,7 @@ export interface StandardApiResponse<T = any> {
     code: string;
     message: string;
     messageKey: string;
-    details: any;
+    details: unknown;
   }> | null;
   pagination: {
     current_page: number;
@@ -45,6 +51,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/a
 
 // Vérifier que l'URL est correctement formatée
 const formattedApiUrl = API_BASE_URL.endsWith('/api') ? API_BASE_URL : `${API_BASE_URL}/api`;
+const TOKEN_COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 jours
 
 console.log('🔗 API URL configurée:', formattedApiUrl);
 
@@ -52,10 +59,19 @@ class ApiClient {
   private client: AxiosInstance;
   private isRefreshing: boolean = false;
   private refreshPromise: Promise<string | null> | null = null;
-  private failedQueue: Array<{
-    resolve: (value: string | null) => void;
-    reject: (reason?: any) => void;
-  }> = [];
+
+  private isPublicAuthEndpoint(url?: string): boolean {
+    if (!url) {
+      return false;
+    }
+
+    return (
+      url.includes('/auth/login/') ||
+      url.includes('/auth/verify-otp/') ||
+      url.includes('/auth/resend-otp/') ||
+      url.includes('/auth/token/refresh/')
+    );
+  }
 
   constructor() {
     this.client = axios.create({
@@ -69,7 +85,14 @@ class ApiClient {
     // Intercepteur pour ajouter le token JWT
     this.client.interceptors.request.use(
       (config) => {
-        const token = localStorage.getItem('access_token');
+        if (this.isPublicAuthEndpoint(config.url)) {
+          if (config.headers?.Authorization) {
+            delete config.headers.Authorization;
+          }
+          return config;
+        }
+
+        const token = this.getAccessToken();
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
           console.log('🔐 Token JWT ajouté à la requête:', config.method?.toUpperCase(), config.url);
@@ -89,33 +112,45 @@ class ApiClient {
         return response;
       },
       async (error) => {
-        const originalRequest = error.config;
+        const originalRequest = (error.config || {}) as RetryableRequestConfig;
 
         console.error('❌ Erreur API:', error.config?.method?.toUpperCase(), error.config?.url, error.response?.status);
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
-          if (!this.isRefreshing) {
-            console.log('🔄 Token expiré, tentative de rafraîchissement...');
-            this.isRefreshing = true;
-            
-            // Créer une seule promesse de refresh partagée
-            this.refreshPromise = this.performRefresh();
+        if (error.response?.status !== 401 || !originalRequest) {
+          return Promise.reject(error);
+        }
+
+        const requestUrl = originalRequest.url || '';
+        const shouldSkipRefresh = this.shouldSkipRefresh(requestUrl);
+
+        if (shouldSkipRefresh || originalRequest._retry) {
+          return Promise.reject(error);
+        }
+
+        originalRequest._retry = true;
+
+        if (!this.isRefreshing) {
+          console.log('🔄 Token expiré, tentative de rafraîchissement...');
+          this.isRefreshing = true;
+          this.refreshPromise = this.performRefresh();
+        }
+
+        try {
+          const newAccessToken = await this.refreshPromise;
+          if (newAccessToken) {
+            originalRequest.headers = originalRequest.headers || {};
+            originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+            console.log('✅ Token rafraîchi avec succès, relance de la requête');
+            return this.client(originalRequest);
           }
-          
-          try {
-            const newAccessToken = await this.refreshPromise;
-            if (newAccessToken) {
-              originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-              console.log('✅ Token rafraîchi avec succès, relance de la requête');
-              return this.client(originalRequest);
-            } else {
-              throw new Error('No access token received');
-            }
-          } catch (refreshError) {
-            console.error('❌ Échec du rafraîchissement du token:', refreshError);
-            this.clearAuthAndRedirect();
-            return Promise.reject(refreshError);
-          } finally {
+
+          throw new Error('No access token received');
+        } catch (refreshError) {
+          console.error('❌ Échec du rafraîchissement du token:', refreshError);
+          this.clearAuthAndRedirect();
+          return Promise.reject(refreshError);
+        } finally {
+          if (this.isRefreshing) {
             this.isRefreshing = false;
             this.refreshPromise = null;
           }
@@ -126,21 +161,58 @@ class ApiClient {
     );
   }
 
+  private getAccessToken(): string | null {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    return localStorage.getItem('access_token');
+  }
+
+  private getRefreshToken(): string | null {
+    if (typeof window === 'undefined') {
+      return null;
+    }
+    return localStorage.getItem('refresh_token');
+  }
+
+  private shouldSkipRefresh(url: string): boolean {
+    return (
+      url.includes('/auth/login/') ||
+      url.includes('/auth/token/refresh/') ||
+      url.includes('/auth/verify-otp/') ||
+      url.includes('/auth/resend-otp/')
+    );
+  }
+
   // Méthode pour effectuer le refresh du token
   private async performRefresh(): Promise<string | null> {
-    const refreshToken = localStorage.getItem('refresh_token');
+    const refreshToken = this.getRefreshToken();
     if (!refreshToken) {
       throw new Error('No refresh token available');
     }
 
     try {
-      const response = await this.client.post('/auth/token/refresh/', {
+      // Le refresh utilise axios brut pour éviter de repasser dans cet intercepteur.
+      const response = await axios.post(`${formattedApiUrl}/auth/token/refresh/`, {
         refresh: refreshToken,
       });
       
       const newAccessToken = response.data?.data?.access;
+      const rotatedRefreshToken = response.data?.data?.refresh;
       if (newAccessToken) {
         localStorage.setItem('access_token', newAccessToken);
+
+        if (rotatedRefreshToken) {
+          localStorage.setItem('refresh_token', rotatedRefreshToken);
+        }
+
+        if (typeof window !== 'undefined') {
+          document.cookie = `access_token=${newAccessToken}; path=/; max-age=${TOKEN_COOKIE_MAX_AGE}`;
+          if (rotatedRefreshToken) {
+            document.cookie = `refresh_token=${rotatedRefreshToken}; path=/; max-age=${TOKEN_COOKIE_MAX_AGE}`;
+          }
+        }
+
         return newAccessToken;
       }
       return null;
@@ -151,17 +223,19 @@ class ApiClient {
 
   // Méthode pour nettoyer l'auth et rediriger
   private clearAuthAndRedirect(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     localStorage.removeItem('user');
-    
-    if (typeof window !== 'undefined') {
-      document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      document.cookie = 'refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      document.cookie = 'user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      
-      window.location.href = '/login';
-    }
+
+    document.cookie = 'access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'user_role=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+
+    window.location.href = '/login';
   }
 
   // Méthodes HTTP génériques

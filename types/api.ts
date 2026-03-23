@@ -61,8 +61,12 @@ export interface Bien {
   proprietaire: string;
   categorie: string;
   titre: string;
+  adresse?: string;
   description: string;
   adresse_complete: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  lien_maps?: string;
   surface: number;
   nombre_pieces: number;
   nombre_chambres: number;
@@ -70,6 +74,8 @@ export interface Bien {
   etage: number | null;
   numero_appartement: string;
   statut: StatutBien;
+  loyer_hc?: number;
+  charges?: number;
   loyer_mensuel: number;
   charges_mensuelles: number;
   depot_garantie: number;
@@ -84,21 +90,34 @@ export interface Bien {
   chauffage: boolean;
   securite: boolean;
   images: string[];
+  photos?: Array<{
+    id: string;
+    fichier: string;
+    ordre: number;
+    created_at: string;
+  }>;
   created_at: string;
   updated_at: string;
+}
+
+export interface PhotoBien {
+  id: string;
+  fichier: string;
+  ordre: number;
+  created_at: string;
 }
 
 // Données du formulaire soumis par le propriétaire
 export interface DonneesFormulaireSoumission {
   adresse: string;
-  categorie_id: number;
+  categorie_id: string;
   loyer_hc: number;
   charges?: number;
   equipements?: string[];
   latitude?: number;
   longitude?: number;
   lien_maps?: string;
-  immeuble_id?: number;
+  immeuble_id?: string;
   description?: string;
   photos?: string[];
   amenagement?: string;
@@ -107,10 +126,10 @@ export interface DonneesFormulaireSoumission {
   nb_pieces?: number;
   surface_m2?: number;
   standing?: string;
-  etage?: number;
+  etage?: string | number;
   accessibilite?: string[];
   espaces_exterieurs?: string[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface SoumissionBien {

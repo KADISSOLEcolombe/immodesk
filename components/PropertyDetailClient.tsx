@@ -1,17 +1,41 @@
 
 "use client";
 
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { BedDouble, Building2, CalendarDays, CircleDollarSign, DoorOpen, Key, MapPin, Ruler, Video } from 'lucide-react';
+import {
+  ArrowLeft,
+  BedDouble,
+  Building2,
+  CalendarDays,
+  CreditCard,
+  DoorOpen,
+  ExternalLink,
+  Key,
+  Mail,
+  MapPin,
+  Ruler,
+  UserRound,
+  Video,
+} from 'lucide-react';
 import PropertyGallery from '@/components/PropertyGallery';
-import { mockProperties, Property } from '@/data/properties';
-import { useState } from 'react';
-import ContactOwnerModal from '@/components/ContactOwnerModal';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useVirtualVisits } from '@/components/virtual-visits/VirtualVisitProvider';
+import {
+  PublicBienDetail,
+  PublicBienOwnerContact,
+  PublicService,
+} from '@/lib/public-service';
+import type { MapPropertyPoint } from '@/components/owner/PropertyLocationMap';
 
-const statusStyles: Record<Property['status'], { label: string; className: string }> = {
+const PropertyLocationMap = dynamic(() => import('@/components/owner/PropertyLocationMap'), {
+  ssr: false,
+  loading: () => <div className="h-80 w-full animate-pulse rounded-xl bg-zinc-100" />,
+});
+
+const statusStyles: Record<'vacant' | 'rented' | 'maintenance', { label: string; className: string }> = {
   vacant: {
     label: 'Disponible',
     className: 'bg-green-100 text-green-700 ring-green-200',
@@ -31,6 +55,31 @@ const currencyFormatter = new Intl.NumberFormat('fr-TG', {
   currency: 'XOF',
   maximumFractionDigits: 0,
 });
+
+type UiProperty = {
+  id: string;
+  title: string;
+  description: string;
+  address: string;
+  city: string;
+  category: string;
+  buildingName: string;
+  status: 'vacant' | 'rented' | 'maintenance';
+  surface: number;
+  rooms: number;
+  bedrooms: number;
+  rentAmount: number;
+  chargesAmount: number;
+  latitude: number | null;
+  longitude: number | null;
+  mapsLink: string;
+  amenities: string[];
+  exteriorSpaces: string[];
+  accessibility: string[];
+  photos: string[];
+  typeLogement: string;
+  standing: string;
+};
 
 interface PropertyDetailPageProps {
   id: string;
@@ -57,25 +106,177 @@ function normalizeRole(role?: string): ViewerRole {
   return 'public';
 }
 
+const toSafeNumber = (value: unknown): number => {
+  const normalized = Number(value);
+  return Number.isFinite(normalized) ? normalized : 0;
+};
+
+const parseCityFromAddress = (address?: string | null): string => {
+  if (typeof address !== 'string' || address.trim().length === 0) {
+    return 'Non specifiee';
+  }
+
+  const chunks = address
+    .split(',')
+    .map((chunk) => chunk.trim())
+    .filter(Boolean);
+
+  return chunks.length > 0 ? chunks[chunks.length - 1] : 'Non specifiee';
+};
+
+const toStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((entry): entry is string => typeof entry === 'string' && entry.trim().length > 0);
+};
+
+function toUiProperty(detail: PublicBienDetail): UiProperty {
+  const title = detail.categorie_nom?.trim() || 'Bien immobilier';
+  const address = detail.adresse?.trim() || 'Adresse non specifiee';
+  const photos = Array.isArray(detail.photos)
+    ? detail.photos
+        .map((photo) => photo?.fichier)
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+    : [];
+
+  return {
+    id: detail.id,
+    title,
+    description: detail.description?.trim() || 'Aucune description disponible pour ce bien.',
+    address,
+    city: parseCityFromAddress(address),
+    category: detail.categorie_nom || 'Categorie non precisee',
+    buildingName: detail.immeuble_nom || 'Non specifie',
+    status: 'vacant',
+    surface: toSafeNumber(detail.surface_m2),
+    rooms: toSafeNumber(detail.nb_pieces),
+    bedrooms: 0,
+    rentAmount: toSafeNumber(detail.loyer_hc),
+    chargesAmount: toSafeNumber(detail.charges),
+    latitude: typeof detail.latitude === 'number' ? detail.latitude : null,
+    longitude: typeof detail.longitude === 'number' ? detail.longitude : null,
+    mapsLink: detail.lien_maps || '',
+    amenities: toStringArray(detail.equipements),
+    exteriorSpaces: toStringArray(detail.espaces_exterieurs),
+    accessibility: toStringArray(detail.accessibilite),
+    photos,
+    typeLogement: detail.type_logement || 'Non precise',
+    standing: detail.standing || 'Standard',
+  };
+}
+
 export default function PropertyDetailClient({ id, role }: PropertyDetailPageProps) {
-  const [showContactOwnerModal, setShowContactOwnerModal] = useState(false);
-  const property = mockProperties.find((item) => item.id === id);
+  const [property, setProperty] = useState<UiProperty | null>(null);
+  const [ownerContact, setOwnerContact] = useState<PublicBienOwnerContact | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isNotFound, setIsNotFound] = useState(false);
   const router = useRouter();
   const { generateTemporaryAccess } = useVirtualVisits();
+  const viewerRole = normalizeRole(role);
 
-  if (!property) {
+  useEffect(() => {
+    const loadProperty = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        setIsNotFound(false);
+
+        const detailResponse = await PublicService.getPropertyDetails(id);
+        if (!detailResponse.success || !detailResponse.data) {
+          if (detailResponse.code === 'RESOURCE_NOT_FOUND') {
+            setIsNotFound(true);
+            return;
+          }
+
+          setError(detailResponse.message || 'Impossible de charger ce bien.');
+          return;
+        }
+
+        setProperty(toUiProperty(detailResponse.data));
+
+        const ownerResponse = await PublicService.getPropertyOwnerContact(id);
+        if (ownerResponse.success && ownerResponse.data) {
+          setOwnerContact(ownerResponse.data);
+        } else {
+          setOwnerContact(null);
+        }
+      } catch (loadError) {
+        console.error('Erreur detail bien public:', loadError);
+        setError('Erreur technique lors du chargement du bien.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadProperty();
+  }, [id]);
+
+  const status = useMemo(() => (property ? statusStyles[property.status] : null), [property]);
+
+  const locationPoints = useMemo<MapPropertyPoint[]>(() => {
+    if (!property || property.latitude === null || property.longitude === null) {
+      return [];
+    }
+
+    return [
+      {
+        id: property.id,
+        label: property.title,
+        address: property.address,
+        latitude: property.latitude,
+        longitude: property.longitude,
+        isCurrent: true,
+      },
+    ];
+  }, [property]);
+
+  if (isNotFound) {
     notFound();
   }
 
-  const status = statusStyles[property.status];
-  const viewerRole = normalizeRole(role);
+  if (isLoading) {
+    return (
+      <section className="rounded-2xl border border-black/5 bg-white p-8 shadow-sm">
+        <div className="flex flex-col items-center justify-center py-10">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-zinc-200 border-t-zinc-900" />
+          <p className="mt-4 text-sm text-zinc-500">Chargement du detail du bien...</p>
+        </div>
+      </section>
+    );
+  }
 
-  const handleRentClick = () => {
-    setShowContactOwnerModal(true);
-  };
+  if (error || !property || !status) {
+    return (
+      <section className="rounded-2xl border border-red-200 bg-red-50 p-6">
+        <p className="text-sm text-red-700">{error || 'Bien introuvable.'}</p>
+        <div className="mt-3">
+          <Link
+            href="/properties"
+            className="inline-flex items-center rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-100"
+          >
+            Retour aux biens
+          </Link>
+        </div>
+      </section>
+    );
+  }
+
+  const ownerName = ownerContact?.contact?.nom || 'Proprietaire non renseigne';
+  const ownerEmail = ownerContact?.contact?.email || 'Non disponible';
+  const ownerMailHref = ownerContact?.contact?.email
+    ? `mailto:${ownerContact.contact.email}?subject=${encodeURIComponent(`Demande d'information - ${property.title}`)}`
+    : '';
 
   const handlePhysicalVisitClick = () => {
-    setShowContactOwnerModal(true);
+    if (ownerMailHref) {
+      window.location.href = ownerMailHref;
+      return;
+    }
+
+    window.location.href = `mailto:contact@immodesk.tg?subject=${encodeURIComponent(`Demande de visite - ${property.title}`)}`;
   };
 
   const handleVirtualVisitClick = () => {
@@ -85,19 +286,12 @@ export default function PropertyDetailClient({ id, role }: PropertyDetailPagePro
 
   return (
     <div className="mx-auto w-full max-w-7xl">
-        <ContactOwnerModal
-          isOpen={showContactOwnerModal}
-          onClose={() => setShowContactOwnerModal(false)}
-          ownerName={property.owner.name}
-          ownerPhone={property.owner.phone}
-          propertyTitle={property.title}
-        />
-        
         <Link
           href="/properties"
-          className="mb-6 inline-flex items-center text-sm font-medium text-zinc-600 transition hover:text-zinc-900"
+          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-zinc-600 transition hover:text-zinc-900"
         >
-          ← Retour à la liste
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          Retour a la liste
         </Link>
 
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -105,7 +299,7 @@ export default function PropertyDetailClient({ id, role }: PropertyDetailPagePro
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">{property.title}</h1>
             <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-zinc-600 sm:text-base">
               <MapPin className="h-4 w-4" aria-hidden="true" />
-              {property.address.street}, {property.address.postalCode} {property.address.city}
+              {property.address}
             </p>
           </div>
           <span
@@ -115,41 +309,109 @@ export default function PropertyDetailClient({ id, role }: PropertyDetailPagePro
           </span>
         </div>
 
-        <PropertyGallery title={property.title} images={property.images} />
+        <PropertyGallery title={property.title} images={property.photos} />
 
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
           <article className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
             <h2 className="text-lg font-semibold text-zinc-900">Description</h2>
             <p className="mt-3 text-sm leading-7 text-zinc-600 sm:text-base">{property.description}</p>
 
-            <h3 className="mt-6 text-base font-semibold text-zinc-900">Caractéristiques détaillées</h3>
+            <h3 className="mt-6 text-base font-semibold text-zinc-900">Caracteristiques detaillees</h3>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="flex items-center gap-2 rounded-xl bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
                 <Ruler className="h-4 w-4" aria-hidden="true" />
-                Surface: {property.features.surface} m²
+                Surface: {property.surface} m2
               </div>
               <div className="flex items-center gap-2 rounded-xl bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
                 <DoorOpen className="h-4 w-4" aria-hidden="true" />
-                Pièces: {property.features.rooms}
+                Pieces: {property.rooms}
               </div>
               <div className="flex items-center gap-2 rounded-xl bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
                 <BedDouble className="h-4 w-4" aria-hidden="true" />
-                Chambres: {property.features.bedrooms}
+                Chambres: {property.bedrooms}
               </div>
               <div className="flex items-center gap-2 rounded-xl bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
                 <Building2 className="h-4 w-4" aria-hidden="true" />
-                Ville: {property.address.city}
+                Ville: {property.city}
               </div>
             </div>
+
+            <h3 className="mt-6 text-base font-semibold text-zinc-900">Localisation</h3>
+            <p className="mt-1 text-sm text-zinc-600">
+              {property.buildingName !== 'Non specifie'
+                ? `Immeuble: ${property.buildingName}`
+                : 'Ce bien ne reference pas encore un immeuble dans la base.'}
+            </p>
+
+            <div className="mt-3">
+              {locationPoints.length > 0 ? (
+                <PropertyLocationMap points={locationPoints} />
+              ) : (
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+                  Les coordonnees de ce bien ne sont pas disponibles pour le moment.
+                </div>
+              )}
+            </div>
+
+            {property.mapsLink ? (
+              <a
+                href={property.mapsLink}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-blue-700 hover:text-blue-800"
+              >
+                Ouvrir le lien de localisation
+                <ExternalLink className="h-4 w-4" aria-hidden="true" />
+              </a>
+            ) : null}
+
+            <h3 className="mt-6 text-base font-semibold text-zinc-900">Informations proprietaire</h3>
+            <div className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+              <div className="flex items-start gap-3">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white ring-1 ring-zinc-200">
+                  <UserRound className="h-5 w-5 text-zinc-700" aria-hidden="true" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-zinc-900">{ownerName}</p>
+                  <p className="mt-1 inline-flex items-center gap-2 text-sm text-zinc-600">
+                    <Mail className="h-4 w-4" aria-hidden="true" />
+                    {ownerEmail}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {(property.amenities.length > 0 || property.exteriorSpaces.length > 0 || property.accessibility.length > 0) && (
+              <>
+                <h3 className="mt-6 text-base font-semibold text-zinc-900">Atouts du bien</h3>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {property.amenities.map((item) => (
+                    <span key={`amenity-${item}`} className="rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700">
+                      {item}
+                    </span>
+                  ))}
+                  {property.exteriorSpaces.map((item) => (
+                    <span key={`exterior-${item}`} className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-medium text-emerald-700">
+                      {item}
+                    </span>
+                  ))}
+                  {property.accessibility.map((item) => (
+                    <span key={`access-${item}`} className="rounded-full bg-blue-100 px-3 py-1 text-xs font-medium text-blue-700">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
           </article>
 
           <aside className="h-fit rounded-2xl border border-zinc-100 bg-white p-6 shadow-xl shadow-zinc-200/50">
             {/* Price Header */}
             <div className="mb-6">
-              <span className="text-3xl font-bold text-zinc-900">{currencyFormatter.format(property.financial.rentAmount)}</span>
+              <span className="text-3xl font-bold text-zinc-900">{currencyFormatter.format(property.rentAmount)}</span>
               <span className="text-zinc-500"> / mois</span>
               <div className="mt-1 text-sm text-zinc-500">
-                + {currencyFormatter.format(property.financial.chargesAmount)} charges
+                + {currencyFormatter.format(property.chargesAmount)} charges
               </div>
             </div>
 
@@ -168,21 +430,32 @@ export default function PropertyDetailClient({ id, role }: PropertyDetailPagePro
                     className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-200 p-3 text-sm font-medium text-zinc-700 transition hover:border-zinc-900 hover:bg-zinc-50 group"
                   >
                       <CalendarDays className="h-5 w-5 text-zinc-400 group-hover:text-zinc-900" />
-                      Visite Physique
+                      Contact visite
                   </button>
               </div>
 
-              <button 
-                onClick={handleRentClick}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-zinc-900 py-3.5 text-center text-sm font-bold text-white shadow-md shadow-zinc-900/20 transition hover:bg-zinc-800 hover:shadow-lg hover:scale-[1.02]"
-              >
+              {ownerMailHref ? (
+                <a
+                  href={ownerMailHref}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-zinc-900 py-3.5 text-center text-sm font-bold text-white shadow-md shadow-zinc-900/20 transition hover:bg-zinc-800 hover:shadow-lg hover:scale-[1.02]"
+                >
                   <Key className="h-4 w-4" />
-                  Louer maintenant
-              </button>
+                  Contacter le proprietaire
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handlePhysicalVisitClick}
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-zinc-900 py-3.5 text-center text-sm font-bold text-white shadow-md shadow-zinc-900/20 transition hover:bg-zinc-800 hover:shadow-lg hover:scale-[1.02]"
+                >
+                  <Key className="h-4 w-4" />
+                  Demander plus d'informations
+                </button>
+              )}
               
               <div className="text-center">
                  <a href={`mailto:contact@immodesk.tg?subject=Question%20-%20${encodeURIComponent(property.title)}`} className="text-xs text-zinc-400 underline hover:text-zinc-600">
-                    Poser une question à l&apos;agence
+                    Poser une question a l&apos;agence
                  </a>
               </div>
             </div>
@@ -191,6 +464,13 @@ export default function PropertyDetailClient({ id, role }: PropertyDetailPagePro
             {viewerRole === 'tenant' && (
               <div className="mt-6 space-y-2 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
                 <p className="text-sm font-medium text-zinc-800">Espace locataire</p>
+                <Link
+                  href={`/tenant/payment?propertyId=${encodeURIComponent(property.id)}`}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800"
+                >
+                  <CreditCard className="h-4 w-4" aria-hidden="true" />
+                  Payer mon loyer
+                </Link>
                 <a
                   href={`mailto:support@immodesk.tg?subject=Demande%20d'assistance%20-%20${encodeURIComponent(property.title)}`}
                   className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"

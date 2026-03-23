@@ -1,13 +1,32 @@
 import { apiClient, StandardApiResponse } from '@/lib/api-client';
 import { Locataire, Bail, AvisLocataire } from '@/types/api';
 
+export interface CreateLocatairePayload {
+  user_id: string;
+  proprietaire_id: string;
+  date_naissance?: string;
+  profession?: string;
+  garant_nom?: string;
+  garant_contact?: string;
+}
+
+export interface CreateBailPayload {
+  locataire: string;
+  bien: string;
+  date_entree: string;
+  date_sortie: string;
+  loyer_mensuel: number;
+  depot_garantie: number;
+  date_revision?: string;
+}
+
 export class LocationsService {
   // ===== LOCATAIRES =====
   static async getLocataires(params?: { proprietaire?: string }): Promise<StandardApiResponse<Locataire[]>> {
     return await apiClient.get<Locataire[]>('/locations/locataires/', params);
   }
 
-  static async createLocataire(data: Partial<Locataire>): Promise<StandardApiResponse<Locataire>> {
+  static async createLocataire(data: CreateLocatairePayload): Promise<StandardApiResponse<Locataire>> {
     return await apiClient.post<Locataire>('/locations/locataires/', data);
   }
 
@@ -28,7 +47,7 @@ export class LocationsService {
     return await apiClient.get<Bail[]>('/locations/baux/', params);
   }
 
-  static async createBail(data: Partial<Bail>): Promise<StandardApiResponse<Bail>> {
+  static async createBail(data: CreateBailPayload): Promise<StandardApiResponse<Bail>> {
     return await apiClient.post<Bail>('/locations/baux/', data);
   }
 
@@ -44,8 +63,8 @@ export class LocationsService {
     return await apiClient.patch<Bail>(`/locations/baux/${id}/reviser/`);
   }
 
-  static async terminerBail(id: string): Promise<StandardApiResponse<any>> {
-    return await apiClient.post<any>(`/locations/baux/${id}/terminer/`);
+  static async terminerBail(id: string): Promise<StandardApiResponse<unknown>> {
+    return await apiClient.post<unknown>(`/locations/baux/${id}/terminer/`);
   }
 
   static async getMonBail(): Promise<StandardApiResponse<Bail>> {

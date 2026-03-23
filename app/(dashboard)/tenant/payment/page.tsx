@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { ArrowLeft, CheckCircle, AlertCircle, CreditCard, Smartphone, Wallet, Loader2, CheckCircle2, ArrowRight, ShieldCheck, Home, Calendar } from 'lucide-react';
+import { AlertCircle, CreditCard, Smartphone, Wallet, Loader2, CheckCircle2, ArrowRight, ShieldCheck, Home } from 'lucide-react';
 import { PaiementEnLigneService, InitierPaiementData } from '@/lib/paiement-en-ligne-service';
 import { TransactionsList } from '@/components/paiement/TransactionsList';
 import { TransactionPaiement, MoyenPaiement, Bail } from '@/types/api';
@@ -10,6 +9,7 @@ import { formatCurrency } from '@/lib/utils';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
 import { jsPDF } from 'jspdf';
 import { LocationsService } from '@/lib/locations-service';
+import { PublicBienDetail, PublicService } from '@/lib/public-service';
 
 const currencyFormatter = new Intl.NumberFormat('fr-TG', {
   style: 'currency',
@@ -54,7 +54,7 @@ const getMonthOptions = () => {
   const today = new Date();
   for (let i = 0; i < 12; i++) {
     const date = new Date(today.getFullYear(), today.getMonth() + i, 1);
-    const value = date.toISOString().slice(0, 10); // YYYY-MM-DD
+    const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
     const label = date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
     options.push({ value, label });
   }
@@ -63,7 +63,10 @@ const getMonthOptions = () => {
 
 export default function TenantPaymentPage() {
   const { addNotification } = useNotifications();
+  const [requestedPropertyId, setRequestedPropertyId] = useState<string | null>(null);
   const [bail, setBail] = useState<Bail | null>(null);
+  const [requestedProperty, setRequestedProperty] = useState<PublicBienDetail | null>(null);
+  const [isLoadingRequestedProperty, setIsLoadingRequestedProperty] = useState(false);
   const [isLoadingBail, setIsLoadingBail] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState<'moov' | 'mix' | 'card'>('moov');
   const [mobileNumber, setMobileNumber] = useState('');
@@ -77,12 +80,45 @@ export default function TenantPaymentPage() {
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [pendingMobileId, setPendingMobileId] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(getMonthOptions()[0].value);
-  const [includeCharges, setIncludeCharges] = useState(false);
 
   // Fetch bail info on mount
   useEffect(() => {
     loadBailInfo();
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    setRequestedPropertyId(params.get('propertyId'));
+  }, []);
+
+  useEffect(() => {
+    const loadRequestedProperty = async () => {
+      if (!requestedPropertyId) {
+        setRequestedProperty(null);
+        return;
+      }
+
+      setIsLoadingRequestedProperty(true);
+      try {
+        const response = await PublicService.getPropertyDetails(requestedPropertyId);
+        if (response.success && response.data) {
+          setRequestedProperty(response.data);
+        } else {
+          setRequestedProperty(null);
+        }
+      } catch (err) {
+        setRequestedProperty(null);
+      } finally {
+        setIsLoadingRequestedProperty(false);
+      }
+    };
+
+    loadRequestedProperty();
+  }, [requestedPropertyId]);
 
   const loadBailInfo = async () => {
     setIsLoadingBail(true);
@@ -101,11 +137,17 @@ export default function TenantPaymentPage() {
 
   const baseRent = bail?.loyer_mensuel || 0;
   const charges = bail?.charges_mensuelles || 0;
-  const totalToPay = includeCharges ? baseRent + charges : baseRent;
+  const totalToPay = baseRent;
+  const hasPropertyMismatch = Boolean(requestedPropertyId && bail && bail.bien !== requestedPropertyId);
 
   const validateForm = (): boolean => {
     if (!bail) {
       setPaymentError('Aucun bail actif trouvé');
+      return false;
+    }
+
+    if (hasPropertyMismatch) {
+      setPaymentError("Votre bail actif n'est pas associé à ce bien.");
       return false;
     }
     
@@ -275,6 +317,27 @@ export default function TenantPaymentPage() {
         <p className="text-zinc-500 mt-2">Sécurisé, rapide et sans frais supplémentaires.</p>
       </div>
 
+      {requestedPropertyId && (
+        <section className="mb-6 rounded-2xl border border-zinc-200 bg-white p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Bien concerné</p>
+          {isLoadingRequestedProperty ? (
+            <p className="mt-2 text-sm text-zinc-600">Chargement du bien...</p>
+          ) : requestedProperty ? (
+            <div className="mt-2">
+              <p className="text-base font-semibold text-zinc-900">{requestedProperty.categorie_nom || 'Bien immobilier'}</p>
+              <p className="text-sm text-zinc-600">{requestedProperty.adresse || 'Adresse non disponible'}</p>
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-amber-700">Impossible de récupérer les détails du bien demandé.</p>
+          )}
+          {hasPropertyMismatch && (
+            <p className="mt-3 text-sm font-medium text-red-700">
+              Le bail actif du locataire ne correspond pas à ce bien. Le paiement est désactivé.
+            </p>
+          )}
+        </section>
+      )}
+
       {isLoadingBail ? (
         <div className="flex items-center justify-center h-64">
           <Loader2 className="w-8 h-8 animate-spin text-zinc-400" />
@@ -311,18 +374,10 @@ export default function TenantPaymentPage() {
                     </select>
                   </label>
 
-                  <div className="flex flex-col justify-end pb-1">
-                    <label className="inline-flex items-center gap-3 p-3 rounded-xl border border-zinc-200 bg-zinc-50 cursor-pointer hover:bg-zinc-100 transition-colors">
-                      <input 
-                        type="checkbox" 
-                        checked={includeCharges} 
-                        onChange={(e) => setIncludeCharges(e.target.checked)} 
-                        className="w-5 h-5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900" 
-                      />
-                      <span className="text-sm font-medium text-zinc-700">
-                        Inclure les charges <span className="text-zinc-500">({currencyFormatter.format(charges)})</span>
-                      </span>
-                    </label>
+                  <div className="flex flex-col justify-end rounded-xl border border-zinc-200 bg-zinc-50 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Contrainte API</p>
+                    <p className="mt-1 text-sm text-zinc-700">Le paiement en ligne valide uniquement le loyer mensuel.</p>
+                    <p className="mt-1 text-sm text-zinc-500">Charges actuelles: {currencyFormatter.format(charges)} (informative)</p>
                   </div>
                 </div>
               </div>
@@ -356,7 +411,7 @@ export default function TenantPaymentPage() {
                           </div>
                           <div>
                             <div className={`font-semibold ${isSelected ? 'text-zinc-900' : 'text-zinc-700'}`}>
-                              {method === 'mix' ? 'Flooz' : method === 'moov' ? 'Moov Money' : method === 'tmoney' ? 'TMoney' : 'Carte Bancaire'}
+                              {method === 'mix' ? 'Flooz' : method === 'moov' ? 'Moov Money' : 'Carte Bancaire'}
                             </div>
                             <div className="text-xs text-zinc-500">Sans frais cachés</div>
                           </div>
@@ -465,7 +520,8 @@ export default function TenantPaymentPage() {
                 <button 
                   type="button" 
                   onClick={handlePay} 
-                  className="w-full h-14 flex items-center justify-center gap-2 rounded-xl bg-zinc-900 text-white text-lg font-bold hover:bg-zinc-800 hover:scale-[1.02] transition-all shadow-xl shadow-zinc-900/20 group"
+                  disabled={isLoading || hasPropertyMismatch}
+                  className="w-full h-14 flex items-center justify-center gap-2 rounded-xl bg-zinc-900 text-white text-lg font-bold hover:bg-zinc-800 hover:scale-[1.02] transition-all shadow-xl shadow-zinc-900/20 group disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
                 >
                   Payer {currencyFormatter.format(totalToPay)}
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -499,13 +555,11 @@ export default function TenantPaymentPage() {
                 <span className="text-zinc-400">Loyer de base</span>
                 <span className="font-medium">{currencyFormatter.format(baseRent)}</span>
               </div>
-              
-              {includeCharges && (
-                <div className="flex justify-between items-center pb-4 border-b border-zinc-800 animate-in fade-in slide-in-from-top-2">
-                  <span className="text-zinc-400">Charges locatives</span>
-                  <span className="font-medium text-amber-200">+{currencyFormatter.format(charges)}</span>
-                </div>
-              )}
+
+              <div className="flex justify-between items-center pb-4 border-b border-zinc-800">
+                <span className="text-zinc-400">Charges locatives (info)</span>
+                <span className="font-medium text-zinc-300">{currencyFormatter.format(charges)}</span>
+              </div>
               
               <div className="flex justify-between items-center pt-2">
                 <span className="text-zinc-400 font-medium">Total à payer</span>

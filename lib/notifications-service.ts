@@ -1,4 +1,5 @@
 import { apiClient, StandardApiResponse } from '@/lib/api-client';
+import { AuthService } from '@/lib/auth-service';
 
 export interface Notification {
   id: string;
@@ -39,11 +40,16 @@ export class NotificationsService {
 
   // Télécharger une quittance PDF
   static async downloadQuittance(paiementId: string): Promise<Blob> {
+    const accessToken = AuthService.getAccessToken();
+    if (!accessToken) {
+      throw new Error('Utilisateur non authentifié');
+    }
+
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api'}/notifications/quittances/${paiementId}/`,
+      `${AuthService.getApiBaseUrl()}/notifications/quittances/${paiementId}/`,
       {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+          Authorization: `Bearer ${accessToken}`,
         },
       }
     );

@@ -33,7 +33,7 @@ export default function AdminVirtualVisitsPage() {
     });
 
     setFeedback('Fichier 360° configuré et associé au bien.');
-    addNotification({ category: 'system', title: `Asset 360° configuré: ${tourFileName}.` });
+    addNotification({ type: 'info', titre: `Asset 360° configuré: ${tourFileName}.`, message: '' });
     setTourFileName('');
   };
 

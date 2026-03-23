@@ -1,8 +1,9 @@
 "use client";
 
+import Image from 'next/image';
 import Link from 'next/link';
-import { FormEvent, useEffect, useState } from 'react';
-import { Building2, Clock3, FileUp, PlusCircle, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Building2, Clock3, Loader2, PlusCircle } from 'lucide-react';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
 import { usePayments } from '@/components/payments/PaymentProvider';
 import { useReports } from '@/components/reports/ReportProvider';
@@ -43,15 +44,26 @@ const mapStatutToUI = (statut: Bien['statut']): OwnerProperty['status'] => {
 };
 
 // Mapping Bien backend vers OwnerProperty UI
-const mapBienToOwnerProperty = (bien: Bien): OwnerProperty => ({
-  id: bien.id,
-  title: bien.titre,
-  address: bien.adresse_complete,
-  rentAmount: bien.loyer_mensuel,
-  status: mapStatutToUI(bien.statut),
+const mapBienToOwnerProperty = (bien: Record<string, unknown>): OwnerProperty => ({
+  id: String(bien.id),
+  title:
+    typeof bien.description === 'string' && bien.description.trim()
+      ? `Bien - ${bien.description.slice(0, 40)}`
+      : `Bien ${String(bien.id).slice(0, 8)}`,
+  address:
+    (typeof bien.adresse === 'string' && bien.adresse) ||
+    (typeof bien.adresse_complete === 'string' && bien.adresse_complete) ||
+    'Adresse non disponible',
+  rentAmount: Number(bien.loyer_hc ?? bien.loyer_mensuel ?? 0),
+  status: mapStatutToUI((bien.statut ?? 'vacant') as Bien['statut']),
   tenantName: null, // TODO: Charger via LocationsService si nécessaire
   rentStatus: bien.statut === 'loue' ? 'paid' : 'pending',
-  image: bien.images?.[0],
+  image:
+    (typeof bien.photo_principale === 'string' && bien.photo_principale) ||
+    (Array.isArray(bien.photos)
+      ? ((bien.photos[0] as { fichier?: string } | undefined)?.fichier ?? undefined)
+      : undefined) ||
+    (Array.isArray(bien.images) ? (bien.images[0] as string | undefined) : undefined),
 });
 
 export default function OwnerPropertiesPage() {
@@ -62,11 +74,6 @@ export default function OwnerPropertiesPage() {
   const [properties, setProperties] = useState<OwnerProperty[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [newTitle, setNewTitle] = useState('');
-  const [newAddress, setNewAddress] = useState('');
-  const [newRent, setNewRent] = useState('');
-  const [photoName, setPhotoName] = useState('');
-  const [formFeedback, setFormFeedback] = useState('');
 
   // Charger les biens depuis le backend
   useEffect(() => {
@@ -79,7 +86,7 @@ export default function OwnerPropertiesPage() {
       setError(null);
       const response = await PatrimoineService.getBiens();
       if (response.success && response.data) {
-        const mapped = response.data.map(mapBienToOwnerProperty);
+        const mapped = response.data.map((item) => mapBienToOwnerProperty(item as unknown as Record<string, unknown>));
         setProperties(mapped);
       } else {
         setError(response.message || 'Erreur lors du chargement des biens');
@@ -116,26 +123,6 @@ export default function OwnerPropertiesPage() {
     });
   };
 
-  const handleAddProperty = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const parsedRent = Number(newRent);
-    if (!newTitle.trim() || !newAddress.trim() || !parsedRent) return;
-
-    const newProperty: OwnerProperty = {
-      id: `prop-${Date.now()}`,
-      title: newTitle.trim(),
-      address: newAddress.trim(),
-      rentAmount: parsedRent,
-      status: 'vacant',
-      tenantName: null,
-      rentStatus: 'pending',
-    };
-
-    setProperties((current) => [newProperty, ...current]);
-    setFormFeedback('Bien soumis à l\'admin avec succès.');
-    setNewTitle(''); setNewAddress(''); setNewRent(''); setPhotoName('');
-  };
-
   const exportPropertiesTable = () => {
     exportTableReport({
       title: 'Tableau biens propriétaire',
@@ -153,9 +140,18 @@ export default function OwnerPropertiesPage() {
           <Building2 className="h-5 w-5" aria-hidden="true" />
           <h1 className="text-xl font-bold">Mes biens</h1>
         </div>
-        <button type="button" onClick={exportPropertiesTable} className="inline-flex rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100">
-          Exporter PDF
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/owner/properties/new"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-zinc-700"
+          >
+            <PlusCircle className="h-3.5 w-3.5" aria-hidden="true" />
+            Ajouter un bien
+          </Link>
+          <button type="button" onClick={exportPropertiesTable} className="inline-flex rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100">
+            Exporter PDF
+          </button>
+        </div>
       </div>
 
       {lateProperties.length > 0 && (
@@ -196,12 +192,29 @@ export default function OwnerPropertiesPage() {
           <div className="space-y-3">
             {properties.map((property) => (
             <article key={property.id} className="rounded-xl border border-zinc-100 bg-zinc-50 p-3">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                <div>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 gap-3">
+                  <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-zinc-200">
+                    {property.image ? (
+                      <Image
+                        src={property.image}
+                        alt={property.title}
+                        fill
+                        className="object-cover"
+                        sizes="112px"
+                        unoptimized={true}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-[11px] font-medium text-zinc-500">
+                        Pas d&apos;image
+                      </div>
+                    )}
+                  </div>
+                  <div className="min-w-0">
                   <p className="font-medium text-zinc-900">{property.title}</p>
                   <p className="text-xs text-zinc-500">{property.address}</p>
                   <p className="mt-1 text-sm text-zinc-700">
-                    Locataire: <span>{property.tenantName ?? 'Aucun (bien non loué)'}</span>
+                    Locataire: <span>{property.tenantName ?? 'Aucun (bien non lou&eacute;)'}</span>
                   </p>
                   <p className="text-sm text-zinc-700">
                     Loyer:{' '}
@@ -210,9 +223,10 @@ export default function OwnerPropertiesPage() {
                     </strong>
                   </p>
                 </div>
+                </div>
                 <div className="flex flex-wrap gap-2">
                   <Link
-                    href={`/properties/${property.id}?role=owner`}
+                    href={`/owner/properties/${property.id}`}
                     className="inline-flex items-center rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100"
                   >
                     Voir détail
@@ -233,40 +247,6 @@ export default function OwnerPropertiesPage() {
         )}
       </section>
 
-      <section className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
-        <div className="mb-4 inline-flex items-center gap-2 text-zinc-900">
-          <PlusCircle className="h-4 w-4" aria-hidden="true" />
-          <h2 className="text-base font-semibold">Ajouter un bien (MVP)</h2>
-        </div>
-        <form onSubmit={handleAddProperty} className="space-y-3">
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
-            Titre
-            <input type="text" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Ex: Villa 4 pièces à Lomé" className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400" />
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
-            Adresse
-            <input type="text" value={newAddress} onChange={(e) => setNewAddress(e.target.value)} placeholder="Quartier, ville" className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400" />
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
-            Loyer mensuel (FCFA)
-            <input type="number" min={0} value={newRent} onChange={(e) => setNewRent(e.target.value)} placeholder="120000" className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400" />
-          </label>
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
-            Photo (simulée)
-            <input type="file" accept="image/*" onChange={(e) => setPhotoName(e.target.files?.[0]?.name ?? '')} className="h-10 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900" />
-          </label>
-          {photoName && (
-            <p className="inline-flex items-center gap-1.5 text-xs text-zinc-600">
-              <FileUp className="h-3.5 w-3.5" aria-hidden="true" />
-              {photoName}
-            </p>
-          )}
-          <button type="submit" className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-zinc-900 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-700">
-            Soumettre à l&apos;admin
-          </button>
-          {formFeedback && <p className="text-sm font-medium text-green-700">{formFeedback}</p>}
-        </form>
-      </section>
     </>
   );
 }

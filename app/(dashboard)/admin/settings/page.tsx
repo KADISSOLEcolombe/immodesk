@@ -18,13 +18,13 @@ export default function AdminSettingsPage() {
     event.preventDefault();
     if (!supportEmail.trim()) return;
     setConfigFeedback('Configuration enregistrée.');
-    addNotification({ category: 'system', title: 'Configuration système mise à jour.' });
+    addNotification({ type: 'info', titre: 'Configuration système mise à jour.', message: '' });
   };
 
   const sendBroadcast = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!broadcastMessage.trim()) return;
-    addNotification({ category: 'message', title: `Message admin diffusé: ${broadcastMessage.trim()}` });
+    addNotification({ type: 'info', titre: `Message admin diffusé: ${broadcastMessage.trim()}`, message: '' });
     setBroadcastMessage('');
   };
 

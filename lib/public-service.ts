@@ -11,18 +11,79 @@ export interface ContactForm {
 
 export interface PublicBienPreview {
   id: string;
-  titre: string;
-  adresse_complete: string;
-  surface: number;
-  nombre_pieces: number;
-  nombre_chambres: number;
-  loyer_mensuel: number;
-  depot_garantie: number;
-  meuble: boolean;
-  images: string[];
+  categorie_nom?: string;
+  adresse?: string;
+  description?: string;
+  loyer_hc?: number;
+  charges?: number;
+  latitude?: number | null;
+  longitude?: number | null;
+  lien_maps?: string;
   type_logement: string;
+  categorie_logement?: string;
+  nb_pieces?: number;
+  surface_m2?: number;
+  standing?: string;
+  etage?: string | number | null;
+  amenagement?: string;
+  espaces_exterieurs?: string[];
+  accessibilite?: string[];
+  photos?: PublicBienPhoto[];
+
+  // Legacy fields (some environments may still expose these)
+  titre?: string;
+  adresse_complete?: string;
+  surface?: number;
+  nombre_pieces?: number;
+  nombre_chambres?: number;
+  loyer_mensuel?: number;
+  depot_garantie?: number;
+  meuble?: boolean;
+  images?: string[];
   note_moyenne?: number;
   nombre_avis?: number;
+}
+
+export interface PublicBienPhoto {
+  id: string;
+  fichier: string;
+  ordre: number;
+  created_at: string;
+}
+
+export interface PublicBienDetail {
+  id: string;
+  categorie_nom: string;
+  immeuble_nom?: string | null;
+  adresse: string;
+  description: string;
+  loyer_hc: number;
+  charges: number;
+  equipements?: string[];
+  latitude?: number | null;
+  longitude?: number | null;
+  lien_maps?: string;
+  note_moyenne?: number;
+  type_logement?: string;
+  categorie_logement?: string;
+  nb_pieces?: number;
+  surface_m2?: number;
+  standing?: string;
+  etage?: string | number | null;
+  amenagement?: string;
+  espaces_exterieurs?: string[];
+  accessibilite?: string[];
+  usage_special?: string;
+  photos?: PublicBienPhoto[];
+}
+
+export interface PublicBienOwnerContact {
+  bien_id: string;
+  adresse: string;
+  contact: {
+    email: string;
+    nom: string;
+  };
 }
 
 export interface SearchFilters {
@@ -48,8 +109,15 @@ export class PublicService {
   }
 
   // Détail d'un bien public
-  static async getPropertyDetails(id: string): Promise<StandardApiResponse<PublicBienPreview>> {
-    return apiClient.get<PublicBienPreview>(`/public/biens/${id}/`);
+  static async getPropertyDetails(id: string): Promise<StandardApiResponse<PublicBienDetail>> {
+    return apiClient.get<PublicBienDetail>(`/public/biens/${id}/`);
+  }
+
+  // Contact du proprietaire (donnees publiques non sensibles)
+  static async getPropertyOwnerContact(
+    id: string
+  ): Promise<StandardApiResponse<PublicBienOwnerContact>> {
+    return apiClient.get<PublicBienOwnerContact>(`/public/biens/${id}/contact-proprio/`);
   }
 
   // Recherche de biens

@@ -9,16 +9,70 @@ interface LoginResponse {
   };
 }
 
+interface AuthDataPayload {
+  access?: string;
+  refresh?: string;
+  user?: User;
+  tokens?: {
+    access?: string;
+    refresh?: string;
+  };
+}
+
+interface TwoFAChallengePayload {
+  two_fa_required?: boolean;
+  otp_token?: string;
+  canal?: 'mail' | 'sms';
+  message?: string;
+}
+
+type RuntimeUserContext =
+  | (User & { user?: User; tokens?: { access?: string; refresh?: string } })
+  | null
+  | undefined;
+
 export class AuthService {
   // Stockage des tokens
   private static readonly ACCESS_TOKEN_KEY = 'access_token';
   private static readonly REFRESH_TOKEN_KEY = 'refresh_token';
   private static readonly USER_KEY = 'user';
+  private static readonly TOKEN_COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 jours
 
   // Stockage temporaire pour le flux 2FA
   private static tempOTPData: { otpToken: string; canal: string } | null = null;
   private static readonly OTP_TOKEN_KEY = 'otp_token_temp';
   private static readonly OTP_CANAL_KEY = 'otp_canal_temp';
+
+  private static extractAuthData(response: StandardApiResponse<LoginResponse>): {
+    accessToken?: string;
+    refreshToken?: string;
+    user?: User;
+  } {
+    const payload = (response.data ?? {}) as AuthDataPayload;
+    const runtimeUserContext = response.userContext as unknown as RuntimeUserContext;
+
+    const accessToken =
+      payload.access ||
+      payload.tokens?.access ||
+      runtimeUserContext?.tokens?.access;
+
+    const refreshToken =
+      payload.refresh ||
+      payload.tokens?.refresh ||
+      runtimeUserContext?.tokens?.refresh;
+
+    let user: User | undefined = payload.user;
+
+    if (!user && runtimeUserContext) {
+      if (runtimeUserContext.user) {
+        user = runtimeUserContext.user;
+      } else if (runtimeUserContext.role) {
+        user = runtimeUserContext as User;
+      }
+    }
+
+    return { accessToken, refreshToken, user };
+  }
 
   // Stocker les données 2FA temporaires (persister dans localStorage aussi)
   static setTempOTPData(otpToken: string, canal: string): void {
@@ -73,20 +127,7 @@ export class AuthService {
       });
 
       if (response.success && response.data) {
-        // Extraire les tokens
-        let accessToken: string | undefined;
-        let refreshToken: string | undefined;
-        let user: User | undefined;
-
-        if (response.userContext?.tokens) {
-          accessToken = response.userContext.tokens.access;
-          refreshToken = response.userContext.tokens.refresh;
-          user = response.userContext.user;
-        } else if (response.data) {
-          accessToken = (response.data as any).access;
-          refreshToken = (response.data as any).refresh;
-          user = (response.data as any).user;
-        }
+        const { accessToken, refreshToken, user } = this.extractAuthData(response);
 
         if (accessToken && refreshToken) {
           localStorage.setItem(this.ACCESS_TOKEN_KEY, accessToken);
@@ -97,10 +138,10 @@ export class AuthService {
           }
 
           if (typeof window !== 'undefined') {
-            document.cookie = `access_token=${accessToken}; path=/; max-age=900`;
-            document.cookie = `refresh_token=${refreshToken}; path=/; max-age=604800`;
+            document.cookie = `access_token=${accessToken}; path=/; max-age=${this.TOKEN_COOKIE_MAX_AGE}`;
+            document.cookie = `refresh_token=${refreshToken}; path=/; max-age=${this.TOKEN_COOKIE_MAX_AGE}`;
             if (user?.role) {
-              document.cookie = `user_role=${user.role}; path=/; max-age=604800`;
+              document.cookie = `user_role=${user.role}; path=/; max-age=${this.TOKEN_COOKIE_MAX_AGE}`;
             }
           }
 
@@ -118,21 +159,22 @@ export class AuthService {
   }
 
   // Renvoyer le code OTP
-  static async resendOTP(): Promise<StandardApiResponse<any>> {
+  static async resendOTP(): Promise<StandardApiResponse<TwoFAChallengePayload>> {
     try {
       const tempData = this.getTempOTPData();
       if (!tempData) {
         throw new Error('No active 2FA session');
       }
 
-      const response = await apiClient.post('/auth/resend-otp/', {
+      const response = await apiClient.post<TwoFAChallengePayload>('/auth/resend-otp/', {
         otp_token: tempData.otpToken,
       });
 
       if (response.success && response.data) {
+        const payload = response.data as unknown as TwoFAChallengePayload;
         // Mettre à jour le canal si changé
-        if ((response.data as any).canal) {
-          this.tempOTPData!.canal = (response.data as any).canal;
+        if (payload.canal && this.tempOTPData) {
+          this.tempOTPData.canal = payload.canal;
         }
       }
 
@@ -174,26 +216,7 @@ export class AuthService {
       console.log('📦 Réponse reçue:', response); // Pour debug
       
       if (response.success) {
-        // Récupérer les tokens - supporte les deux structures possibles
-        let accessToken: string | undefined;
-        let refreshToken: string | undefined;
-        let user: User | undefined;
-        
-        // Structure 1: response.userContext.tokens
-        if (response.userContext?.tokens) {
-          accessToken = response.userContext.tokens.access;
-          refreshToken = response.userContext.tokens.refresh;
-          user = response.userContext.user;
-        }
-        // Structure 2: response.data (tokens directement dans data)
-        else if (response.data) {
-          // Si les tokens sont dans response.data
-          if (typeof response.data === 'object') {
-            accessToken = (response.data as any).access || (response.data as any).tokens?.access;
-            refreshToken = (response.data as any).refresh || (response.data as any).tokens?.refresh;
-            user = (response.data as any).user;
-          }
-        }
+        const { accessToken, refreshToken, user } = this.extractAuthData(response);
         
         if (accessToken && refreshToken) {
           // Stocker les tokens
@@ -207,10 +230,10 @@ export class AuthService {
           
           // Stocker dans les cookies pour le middleware
           if (typeof window !== 'undefined') {
-            document.cookie = `access_token=${accessToken}; path=/; max-age=900`; // 15 minutes
-            document.cookie = `refresh_token=${refreshToken}; path=/; max-age=604800`; // 7 jours
+            document.cookie = `access_token=${accessToken}; path=/; max-age=${this.TOKEN_COOKIE_MAX_AGE}`;
+            document.cookie = `refresh_token=${refreshToken}; path=/; max-age=${this.TOKEN_COOKIE_MAX_AGE}`;
             if (user?.role) {
-              document.cookie = `user_role=${user.role}; path=/; max-age=604800`; // 7 jours
+              document.cookie = `user_role=${user.role}; path=/; max-age=${this.TOKEN_COOKIE_MAX_AGE}`;
             }
           }
           
@@ -289,7 +312,7 @@ export class AuthService {
         
         // Mettre à jour le cookie également
         if (typeof window !== 'undefined') {
-          document.cookie = `access_token=${response.data.access}; path=/; max-age=900`; // 15 minutes
+          document.cookie = `access_token=${response.data.access}; path=/; max-age=${this.TOKEN_COOKIE_MAX_AGE}`;
         }
       }
       
@@ -325,9 +348,26 @@ export class AuthService {
   }
 
   // Obtenir le rôle de l'utilisateur
-  static getUserRole(): string | null {
+  static getUserRole(): User['role'] | null {
     const user = this.getCurrentUserFromStorage();
     return user?.role || null;
+  }
+
+  // Mapper un rôle backend vers la route dashboard frontend
+  static getDashboardRouteByRole(role: User['role'] | null): string {
+    if (role === 'superadmin') return '/admin';
+    if (role === 'proprietaire') return '/owner';
+    if (role === 'locataire') return '/tenant';
+    return '/tenant';
+  }
+
+  static getDashboardRouteForCurrentUser(): string {
+    return this.getDashboardRouteByRole(this.getUserRole());
+  }
+
+  static getApiBaseUrl(): string {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+    return apiUrl.endsWith('/api') ? apiUrl : `${apiUrl}/api`;
   }
 
   // Vérifier si l'utilisateur est super admin
@@ -376,13 +416,11 @@ export class AuthService {
       const cookies = document.cookie.split(';');
       let accessToken: string | null = null;
       let refreshToken: string | null = null;
-      let userRole: string | null = null;
 
       cookies.forEach(cookie => {
         const [name, value] = cookie.trim().split('=');
         if (name === 'access_token') accessToken = value;
         if (name === 'refresh_token') refreshToken = value;
-        if (name === 'user_role') userRole = value;
       });
 
       // Synchroniser avec localStorage si nécessaire

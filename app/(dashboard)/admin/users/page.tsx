@@ -1,10 +1,11 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from 'react';
-import { Users, Loader2 } from 'lucide-react';
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { Users, Loader2, PlusCircle, ArrowRight } from 'lucide-react';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
 import { useReports } from '@/components/reports/ReportProvider';
-import { UserService, CreateUserData, UserResponse } from '@/lib/user-service';
+import { UserService, UserResponse } from '@/lib/user-service';
 
 type UserRole = 'tenant' | 'owner' | 'admin';
 
@@ -22,14 +23,6 @@ export default function AdminUsersPage() {
 
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState<UserRole>('tenant');
-  const [userFeedback, setUserFeedback] = useState('');
-  const [errorFeedback, setErrorFeedback] = useState('');
 
   // Charger la liste des utilisateurs au montage
   useEffect(() => {
@@ -52,78 +45,20 @@ export default function AdminUsersPage() {
         setUsers(mappedUsers);
       } else {
         addNotification({
-          category: 'system',
-          title: 'Erreur lors du chargement des utilisateurs',
+          type: 'alerte',
+          titre: 'Erreur lors du chargement des utilisateurs',
+          message: '',
         });
       }
     } catch (error) {
       console.error('Error fetching users:', error);
       addNotification({
-        category: 'system',
-        title: 'Erreur de connexion au serveur',
+        type: 'alerte',
+        titre: 'Erreur de connexion au serveur',
+        message: '',
       });
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const createUser = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password.trim()) {
-      setErrorFeedback('Veuillez remplir tous les champs obligatoires.');
-      return;
-    }
-
-    setIsSubmitting(true);
-    setErrorFeedback('');
-    setUserFeedback('');
-
-    try {
-      const userData: CreateUserData = {
-        email: email.trim().toLowerCase(),
-        password: password.trim(),
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        role: UserService.mapFrontendRoleToBackend(role),
-        canal_2fa: 'mail', // Par défaut
-      };
-
-      const response = await UserService.createUser(userData);
-
-      if (response.success) {
-        // Rafraîchir la liste des utilisateurs
-        await fetchUsers();
-        
-        setUserFeedback('Compte créé avec succès.');
-        addNotification({
-          category: 'system',
-          title: `Nouveau compte créé (${role}) : ${firstName} ${lastName}.`,
-        });
-
-        // Réinitialiser le formulaire
-        setFirstName('');
-        setLastName('');
-        setEmail('');
-        setPassword('');
-        setRole('tenant');
-      } else {
-        const errorMsg = response.errors?.[0]?.message || response.message || 'Erreur lors de la création';
-        setErrorFeedback(errorMsg);
-        addNotification({
-          category: 'system',
-          title: `Erreur: ${errorMsg}`,
-        });
-      }
-    } catch (error) {
-      console.error('Error creating user:', error);
-      setErrorFeedback('Erreur de connexion au serveur.');
-      addNotification({
-        category: 'system',
-        title: 'Erreur de connexion au serveur',
-      });
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -159,99 +94,23 @@ export default function AdminUsersPage() {
           <Users className="h-5 w-5" aria-hidden="true" />
           <h1 className="text-xl font-bold">Gestion des utilisateurs</h1>
         </div>
-        <button
-          type="button"
-          onClick={exportUsers}
-          className="inline-flex rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100"
-        >
-          Exporter PDF
-        </button>
-      </div>
-
-      {/* Création compte */}
-      <section className="mb-6 rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
-        <h2 className="mb-4 text-base font-semibold text-zinc-900">Créer un compte</h2>
-        <form onSubmit={createUser} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
-            Prénom
-            <input
-              type="text"
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              placeholder="Prénom"
-              className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400"
-              disabled={isSubmitting}
-            />
-          </label>
-
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
-            Nom
-            <input
-              type="text"
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              placeholder="Nom"
-              className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400"
-              disabled={isSubmitting}
-            />
-          </label>
-
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 sm:col-span-2">
-            Email
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="utilisateur@immodesk.tg"
-              className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400"
-              disabled={isSubmitting}
-            />
-          </label>
-
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700 sm:col-span-2">
-            Mot de passe
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Définir un mot de passe (min. 8 caractères)"
-              className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400"
-              disabled={isSubmitting}
-            />
-          </label>
-
-          <label className="flex flex-col gap-1.5 text-sm font-medium text-zinc-700">
-            Rôle
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as UserRole)}
-              className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400"
-              disabled={isSubmitting}
-            >
-              <option value="tenant">Locataire</option>
-              <option value="owner">Propriétaire</option>
-              <option value="admin">Admin</option>
-            </select>
-          </label>
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="inline-flex h-10 items-center justify-center rounded-xl bg-zinc-900 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60"
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/users/new"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-zinc-700"
           >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Création...
-              </>
-            ) : (
-              'Créer le compte'
-            )}
+            <PlusCircle className="h-3.5 w-3.5" aria-hidden="true" />
+            Créer un utilisateur
+          </Link>
+          <button
+            type="button"
+            onClick={exportUsers}
+            className="inline-flex rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100"
+          >
+            Exporter PDF
           </button>
-        </form>
-        {userFeedback && <p className="mt-3 text-sm font-medium text-green-700">{userFeedback}</p>}
-        {errorFeedback && <p className="mt-3 text-sm font-medium text-red-600">{errorFeedback}</p>}
-      </section>
+        </div>
+      </div>
 
       {/* Liste utilisateurs */}
       <section className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
@@ -268,8 +127,8 @@ export default function AdminUsersPage() {
         ) : (
           <div className="space-y-2">
             {users.map((user) => (
-              <article key={user.id} className="flex items-center justify-between gap-3 rounded-xl border border-zinc-100 bg-zinc-50 p-3">
-                <div>
+              <article key={user.id} className="flex flex-col gap-3 rounded-xl border border-zinc-100 bg-zinc-50 p-3 transition hover:border-zinc-200 hover:bg-white sm:flex-row sm:items-center sm:justify-between">
+                <Link href={`/admin/users/${user.id}`} className="block rounded-lg p-1 -m-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-300">
                   <p className="text-sm font-medium text-zinc-900">{user.fullName}</p>
                   <p className="text-xs text-zinc-500">{user.email}</p>
                   <p className="mt-0.5 text-xs text-zinc-700">
@@ -278,14 +137,23 @@ export default function AdminUsersPage() {
                       {user.active ? 'Actif' : 'Inactif'}
                     </span>
                   </p>
+                </Link>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/admin/users/${user.id}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100"
+                  >
+                    Voir détails
+                    <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => toggleActive(user.id)}
+                    className="inline-flex rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100"
+                  >
+                    {user.active ? 'Désactiver' : 'Réactiver'}
+                  </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => toggleActive(user.id)}
-                  className="inline-flex rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100"
-                >
-                  {user.active ? 'Désactiver' : 'Réactiver'}
-                </button>
               </article>
             ))}
           </div>

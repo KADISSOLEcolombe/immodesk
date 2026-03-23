@@ -3,7 +3,15 @@ import { Paiement, Depense, Balance } from '@/types/api';
 
 export class ComptabiliteService {
   // ===== PAIEMENTS =====
-  static async getPaiements(params?: { bail?: string }): Promise<StandardApiResponse<Paiement[]>> {
+  static async getPaiements(params?: {
+    bail?: string;
+    bail_id?: string;
+    statut?: 'paye' | 'en_retard' | 'impaye';
+    mois?: string;
+    source?: 'manuel' | 'mixx_by_yas' | 'moov_money' | 'carte_bancaire';
+    page?: number;
+    page_size?: number;
+  }): Promise<StandardApiResponse<Paiement[]>> {
     return await apiClient.get<Paiement[]>('/comptabilite/paiements/', params);
   }
 

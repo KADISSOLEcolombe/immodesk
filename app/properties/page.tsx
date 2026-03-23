@@ -3,10 +3,80 @@
 import { useMemo, useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, SlidersHorizontal, X, ArrowLeft } from 'lucide-react';
 import PropertyCard from '@/components/PropertyCard';
-import { mockProperties, Property } from '@/data/properties';
+import { Property } from '@/data/properties';
 import Link from 'next/link';
-import { PatrimoineService } from '@/lib/patrimoine-service';
-import { Bien } from '@/types/api';
+import { PublicBienPreview, PublicService } from '@/lib/public-service';
+
+const parseCityFromAddress = (address?: string | null): string => {
+  if (typeof address !== 'string' || address.trim().length === 0) {
+    return 'Non spécifiée';
+  }
+
+  const chunks = address
+    .split(',')
+    .map((chunk) => chunk.trim())
+    .filter(Boolean);
+
+  return chunks.length > 0 ? chunks[chunks.length - 1] : 'Non spécifiée';
+};
+
+const toSafeNumber = (value: unknown): number => {
+  const normalized = Number(value);
+  return Number.isFinite(normalized) ? normalized : 0;
+};
+
+const mapPublicBienToProperty = (bien: PublicBienPreview): Property => {
+  const title =
+    typeof bien.titre === 'string' && bien.titre.trim().length > 0
+      ? bien.titre
+      : typeof bien.categorie_nom === 'string' && bien.categorie_nom.trim().length > 0
+        ? bien.categorie_nom
+        : 'Bien sans titre';
+  const typeLogement =
+    typeof bien.type_logement === 'string' && bien.type_logement.trim().length > 0
+      ? bien.type_logement
+      : 'Type non précisé';
+  const fullAddress =
+    typeof bien.adresse_complete === 'string' && bien.adresse_complete.trim().length > 0
+      ? bien.adresse_complete
+      : typeof bien.adresse === 'string' && bien.adresse.trim().length > 0
+        ? bien.adresse
+        : 'Adresse non spécifiée';
+  const imagesFromPhotos = Array.isArray(bien.photos)
+    ? bien.photos
+        .map((photo) => photo?.fichier)
+        .filter((path): path is string => typeof path === 'string' && path.trim().length > 0)
+    : [];
+  const imagesFromLegacy = Array.isArray(bien.images)
+    ? bien.images.filter((image): image is string => typeof image === 'string' && image.trim().length > 0)
+    : [];
+
+  return {
+    id: bien.id,
+    title,
+    description: `${typeLogement} - ${title}`,
+    owner: {
+      name: 'Propriétaire',
+      phone: 'Non disponible',
+    },
+    address: {
+      street: fullAddress,
+      city: parseCityFromAddress(fullAddress),
+      postalCode: 'Non spécifié',
+    },
+    financial: {
+      rentAmount: toSafeNumber(bien.loyer_hc ?? bien.loyer_mensuel),
+      chargesAmount: toSafeNumber(bien.charges),
+    },
+    features: {
+      surface: toSafeNumber(bien.surface_m2 ?? bien.surface),
+      rooms: toSafeNumber(bien.nb_pieces ?? bien.nombre_pieces),
+      bedrooms: toSafeNumber(bien.nombre_chambres),
+    },
+    images: imagesFromPhotos.length > 0 ? imagesFromPhotos : imagesFromLegacy,
+    status: 'vacant',
+  };
+};
 
 export default function PropertiesPage() {
   const [search, setSearch] = useState('');
@@ -15,28 +85,44 @@ export default function PropertiesPage() {
   const [selectedStatuses, setSelectedStatuses] = useState<Property['status'][]>([]);
   const [roomsFilter, setRoomsFilter] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
-  const [properties, setProperties] = useState<Bien[]>([]);
+  const [properties, setProperties] = useState<PublicBienPreview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [useBackend, setUseBackend] = useState(false);
 
   useEffect(() => {
     const loadProperties = async () => {
       try {
         setIsLoading(true);
-        const response = await PatrimoineService.getBiensPublic();
-        
-        if (response.success && response.data) {
-          setProperties(response.data);
-          setUseBackend(true);
-        } else {
-          // Fallback vers les données mockées si le backend n'est pas disponible
-          console.log('Backend non disponible, utilisation des données mockées');
-          setUseBackend(false);
+        setError(null);
+
+        const allProperties: PublicBienPreview[] = [];
+        let page = 1;
+        let shouldContinue = true;
+
+        while (shouldContinue) {
+          const response = await PublicService.getAvailableProperties(undefined, page);
+
+          if (!response.success || !response.data) {
+            setError(response.message || 'Erreur lors du chargement des biens publics');
+            setProperties([]);
+            return;
+          }
+
+          allProperties.push(...response.data);
+
+          const hasNextPage = response.pagination?.has_next === true;
+          if (!hasNextPage) {
+            shouldContinue = false;
+          } else {
+            page += 1;
+          }
         }
-      } catch (error) {
-        console.log('Backend non disponible, utilisation des données mockées:', error);
-        setUseBackend(false);
+
+        setProperties(allProperties);
+      } catch (loadError) {
+        console.error('Erreur lors du chargement des biens publics:', loadError);
+        setError('Erreur technique lors du chargement des biens publics');
+        setProperties([]);
       } finally {
         setIsLoading(false);
       }
@@ -45,37 +131,10 @@ export default function PropertiesPage() {
     loadProperties();
   }, []);
 
-  // Convertir les données du backend vers le format Property pour le filtrage
+  // Convertir les données publiques backend vers le format Property pour le filtrage
   const convertedProperties = useMemo(() => {
-    if (useBackend) {
-      return properties.map((bien): Property => ({
-        id: bien.id,
-        title: bien.titre,
-        description: bien.description,
-        owner: {
-          name: `Propriétaire ${bien.proprietaire}`,
-          phone: 'Non disponible',
-        },
-        address: {
-          street: bien.adresse_complete,
-          city: 'Non spécifiée',
-          postalCode: 'Non spécifié',
-        },
-        financial: {
-          rentAmount: bien.loyer_mensuel,
-          chargesAmount: bien.charges_mensuelles,
-        },
-        features: {
-          surface: bien.surface,
-          rooms: bien.nombre_pieces,
-          bedrooms: bien.nombre_chambres,
-        },
-        images: bien.images,
-        status: bien.statut as Property['status'],
-      }));
-    }
-    return mockProperties;
-  }, [properties, useBackend]);
+    return properties.map((bien) => mapPublicBienToProperty(bien));
+  }, [properties]);
 
   const filteredProperties = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -138,6 +197,23 @@ export default function PropertiesPage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="mx-auto w-full max-w-3xl px-4 py-10">
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
+          <p className="text-sm font-medium text-red-700">{error}</p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="mt-4 inline-flex items-center rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-100"
+          >
+            Réessayer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto w-full max-w-7xl">
       {/* En-tête */}
@@ -157,11 +233,6 @@ export default function PropertiesPage() {
               {activeFilterCount > 0 && (
                 <span className="ml-2 inline-flex items-center rounded-full bg-zinc-900 px-2 py-0.5 text-xs font-semibold text-white">
                   {activeFilterCount} filtre{activeFilterCount > 1 ? 's' : ''}
-                </span>
-              )}
-              {useBackend && (
-                <span className="ml-2 inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
-                  Données réelles
                 </span>
               )}
             </p>

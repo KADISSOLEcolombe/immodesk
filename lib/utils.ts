@@ -25,3 +25,35 @@ export function formatDateTime(dateString: string): string {
     minute: '2-digit',
   });
 }
+
+function getBackendOrigin(): string {
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+
+  try {
+    const parsed = new URL(apiUrl);
+    return parsed.origin;
+  } catch {
+    return 'http://127.0.0.1:8000';
+  }
+}
+
+export function normalizeMediaUrl(pathOrUrl?: string | null): string {
+  if (!pathOrUrl || typeof pathOrUrl !== 'string') {
+    return '/window.svg';
+  }
+
+  const value = pathOrUrl.trim();
+  if (!value) {
+    return '/window.svg';
+  }
+
+  if (value.startsWith('http://') || value.startsWith('https://') || value.startsWith('data:')) {
+    return value;
+  }
+
+  if (value.startsWith('/')) {
+    return `${getBackendOrigin()}${value}`;
+  }
+
+  return `${getBackendOrigin()}/${value}`;
+}

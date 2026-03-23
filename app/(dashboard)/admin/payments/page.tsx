@@ -155,16 +155,16 @@ export default function AdminPaymentsPage() {
         statut: mapUIStatusToBackend(nextStatus),
       });
       if (response.success) {
-        addNotification({ category: 'payment', title: `Paiement ${paymentId} mis à jour: ${nextStatus}` });
+        addNotification({ type: 'paiement', titre: `Paiement ${paymentId} mis à jour: ${nextStatus}`, message: '' });
         // Update local state
         setPayments(prev => prev.map(p => 
           p.id === paymentId ? { ...p, status: nextStatus } : p
         ));
       } else {
-        addNotification({ category: 'payment', title: `Erreur: ${response.message || 'Mise à jour échouée'}` });
+        addNotification({ type: 'paiement', titre: `Erreur: ${response.message || 'Mise à jour échouée'}`, message: '' });
       }
     } catch (err) {
-      addNotification({ category: 'payment', title: 'Erreur de connexion lors de la mise à jour' });
+      addNotification({ type: 'paiement', titre: 'Erreur de connexion lors de la mise à jour', message: '' });
     } finally {
       setUpdateLoading(null);
     }
@@ -173,7 +173,7 @@ export default function AdminPaymentsPage() {
   const resolvePaymentIssue = (id: string) => {
     const target = paymentIssues.find((i) => i.id === id);
     setPaymentIssues((c) => c.map((i) => (i.id === id ? { ...i, status: 'resolved' } : i)));
-    if (target) addNotification({ category: 'payment', title: `Incident paiement résolu: ${target.propertyTitle}.` });
+    if (target) addNotification({ type: 'paiement', titre: `Incident paiement résolu: ${target.propertyTitle}.`, message: '' });
   };
 
   // Export to CSV
@@ -198,7 +198,7 @@ export default function AdminPaymentsPage() {
     a.download = `paiements-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    addNotification({ category: 'payment', title: 'Export CSV des paiements téléchargé.' });
+    addNotification({ type: 'paiement', titre: 'Export CSV des paiements téléchargé.', message: '' });
   };
 
   const tabs = [

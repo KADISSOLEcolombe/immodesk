@@ -126,15 +126,15 @@ export function PaymentProvider({ children }: { children: ReactNode }) {
         // Transformer les données du backend vers le format frontend
         const transformedPayments: PaymentRecord[] = paiementsResponse.data!.map((paiement) => ({
           id: paiement.id,
-          tenantName: `Locataire ${paiement.locataire}`, // TODO: Récupérer le vrai nom
-          propertyTitle: `Bien ${paiement.bail}`, // TODO: Récupérer le vrai titre
-          month: new Date(paiement.mois_couvert).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
+          tenantName: paiement.bail_detail?.locataire_nom || 'Locataire inconnu',
+          propertyTitle: paiement.bail_detail?.bien_adresse || `Bien ${paiement.bail}`,
+          month: new Date(paiement.mois_concerne).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
           amount: paiement.montant,
-          channel: paiement.mode_paiement as PaymentChannel,
+          channel: (paiement.source_paiement === 'manuel' ? 'manual' : 'mobile_money') as PaymentChannel,
           status: paiement.statut as PaymentStatus,
           source: 'manual' as const,
           createdAt: paiement.date_paiement,
-          reference: paiement.reference_paiement,
+          reference: paiement.transaction_ref || '',
           refundedAmount: 0,
           receiptGenerated: false,
           receiptEmailed: false,

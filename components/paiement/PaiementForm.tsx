@@ -72,7 +72,7 @@ export function PaiementForm({
     setIsLoading(true);
     try {
       const data: InitierPaiementData = {
-        bail: bailId,
+        bail_id: bailId,
         montant,
         moyen_paiement: moyenSelectionne,
         numero_telephone: moyen?.requirePhone ? telephone : undefined,

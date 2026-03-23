@@ -1,4 +1,5 @@
 import { apiClient, StandardApiResponse } from '@/lib/api-client';
+import { AuthService } from '@/lib/auth-service';
 
 export interface DashboardStats {
   total_immeubles: number;
@@ -36,10 +37,122 @@ export interface FinancialMetrics {
   retard_moyen_paiement: number;
 }
 
+export interface AdminPaymentStats {
+  total_transactions: number;
+  valide: number;
+  echoue: number;
+  en_attente: number;
+  annule: number;
+  total_manuel: number;
+  montant_total: string;
+}
+
+export interface AdminUserStats {
+  total_utilisateurs: number;
+  proprietaires: number;
+  locataires: number;
+  nouveaux_ce_mois: number;
+}
+
+export interface AdminVisitStats {
+  total_visites: number;
+  utilisees: number;
+  non_utilisees: number;
+  revenus_visites: string;
+}
+
+export interface AdminSubmissionStats {
+  total_soumissions: number;
+  en_examen: number;
+  publie: number;
+  refuse: number;
+}
+
+export interface AdminGlobalStats {
+  utilisateurs: AdminUserStats;
+  paiements: AdminPaymentStats;
+  visites: AdminVisitStats;
+  soumissions: AdminSubmissionStats;
+}
+
 export class StatsService {
+  private static buildFallbackError<T>(message: string): StandardApiResponse<T> {
+    return {
+      success: false,
+      code: 'RESOURCE_NOT_FOUND',
+      message,
+      messageKey: 'resource.not_found',
+      data: null,
+      timestamp: new Date().toISOString(),
+      errors: null,
+      pagination: null,
+    };
+  }
+
   // Tableau de bord principal
   static async getDashboard(): Promise<StandardApiResponse<DashboardStats>> {
-    return apiClient.get<DashboardStats>('/stats/dashboard/');
+    const userRole = AuthService.getUserRole();
+
+    if (userRole === 'superadmin') {
+      const adminGlobal = await this.getAdminGlobalStats();
+      if (adminGlobal.success && adminGlobal.data) {
+        const data = adminGlobal.data;
+        const monthlyRevenue = Number(data.paiements.montant_total || '0');
+        const dashboard: DashboardStats = {
+          total_immeubles: 0,
+          total_biens: 0,
+          biens_vacants: 0,
+          biens_loues: 0,
+          total_locataires: data.utilisateurs.locataires,
+          baux_actifs: 0,
+          baux_termines: 0,
+          revenus_mois: monthlyRevenue,
+          revenus_annee: monthlyRevenue,
+          depenses_mois: 0,
+          benefice_net: monthlyRevenue,
+        };
+
+        return {
+          ...adminGlobal,
+          data: dashboard,
+        };
+      }
+    }
+
+    const ownerPortfolio = await apiClient.get<{
+      total_biens: number;
+      biens_loues: number;
+      biens_vacants: number;
+      revenus_mois_courant: string;
+      depenses_mois_courant: string;
+      solde_mois_courant: string;
+    }>('/stats/proprio/portefeuille/');
+
+    if (ownerPortfolio.success && ownerPortfolio.data) {
+      const data = ownerPortfolio.data;
+      const revenusMois = Number(data.revenus_mois_courant || '0');
+      const depensesMois = Number(data.depenses_mois_courant || '0');
+      const dashboard: DashboardStats = {
+        total_immeubles: 0,
+        total_biens: data.total_biens,
+        biens_vacants: data.biens_vacants,
+        biens_loues: data.biens_loues,
+        total_locataires: 0,
+        baux_actifs: 0,
+        baux_termines: 0,
+        revenus_mois: revenusMois,
+        revenus_annee: revenusMois,
+        depenses_mois: depensesMois,
+        benefice_net: Number(data.solde_mois_courant || '0'),
+      };
+
+      return {
+        ...ownerPortfolio,
+        data: dashboard,
+      };
+    }
+
+    return this.buildFallbackError<DashboardStats>('Aucune statistique de dashboard disponible.');
   }
 
   // Évolution mensuelle (pour graphiques)
@@ -66,6 +179,29 @@ export class StatsService {
     return apiClient.get<FinancialMetrics>('/stats/metriques-financieres/');
   }
 
+  static async getAdminGlobalStats(): Promise<StandardApiResponse<AdminGlobalStats>> {
+    return apiClient.get<AdminGlobalStats>('/stats/admin/global/');
+  }
+
+  static async getAdminPaymentStats(params?: {
+    date_debut?: string;
+    date_fin?: string;
+  }): Promise<StandardApiResponse<AdminPaymentStats>> {
+    return apiClient.get<AdminPaymentStats>('/stats/admin/paiements/', params || {});
+  }
+
+  static async getAdminUserStats(): Promise<StandardApiResponse<AdminUserStats>> {
+    return apiClient.get<AdminUserStats>('/stats/admin/utilisateurs/');
+  }
+
+  static async getAdminVisitStats(): Promise<StandardApiResponse<AdminVisitStats>> {
+    return apiClient.get<AdminVisitStats>('/stats/admin/visites/');
+  }
+
+  static async getAdminSubmissionStats(): Promise<StandardApiResponse<AdminSubmissionStats>> {
+    return apiClient.get<AdminSubmissionStats>('/stats/admin/soumissions/');
+  }
+
   // Performance par immeuble
   static async getBuildingPerformance(immeubleId: string): Promise<
     StandardApiResponse<{
@@ -84,15 +220,20 @@ export class StatsService {
     periodeDebut?: string,
     periodeFin?: string
   ): Promise<Blob> {
+    const accessToken = AuthService.getAccessToken();
+    if (!accessToken) {
+      throw new Error('Utilisateur non authentifié');
+    }
+
     const params = new URLSearchParams({ format });
     if (periodeDebut) params.append('date_debut', periodeDebut);
     if (periodeFin) params.append('date_fin', periodeFin);
 
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api'}/stats/export/?${params}`,
+      `${AuthService.getApiBaseUrl()}/stats/export/?${params}`,
       {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+          Authorization: `Bearer ${accessToken}`,
         },
       }
     );

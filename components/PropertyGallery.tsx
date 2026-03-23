@@ -1,7 +1,8 @@
 "use client";
 
 import Image from 'next/image';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { normalizeMediaUrl } from '@/lib/utils';
 
 interface PropertyGalleryProps {
   title: string;
@@ -9,7 +10,8 @@ interface PropertyGalleryProps {
 }
 
 export default function PropertyGallery({ title, images }: PropertyGalleryProps) {
-  const [activeImage, setActiveImage] = useState(images[0] || '/window.svg');
+  const normalizedImages = useMemo(() => images.map((img) => normalizeMediaUrl(img)), [images]);
+  const [activeImage, setActiveImage] = useState(normalizedImages[0] || '/window.svg');
 
   return (
     <div className="mb-8 flex flex-col gap-4">
@@ -20,11 +22,12 @@ export default function PropertyGallery({ title, images }: PropertyGalleryProps)
           fill
           className="object-cover"
           priority
+          unoptimized={true}
         />
       </div>
       {images.length > 1 && (
         <div className="flex gap-4 overflow-x-auto pb-2">
-          {images.map((img, index) => (
+          {normalizedImages.map((img, index) => (
             <button
               key={index}
               onClick={() => setActiveImage(img)}
@@ -37,6 +40,7 @@ export default function PropertyGallery({ title, images }: PropertyGalleryProps)
                 alt={`${title} view ${index + 1}`}
                 fill
                 className="object-cover"
+                unoptimized={true}
               />
             </button>
           ))}

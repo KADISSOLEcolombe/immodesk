@@ -1,5 +1,5 @@
 import { apiClient, StandardApiResponse } from '@/lib/api-client';
-import { Bien, Categorie, Immeuble, SoumissionBien } from '@/types/api';
+import { Bien, Categorie, Immeuble, PhotoBien, SoumissionBien } from '@/types/api';
 
 export class PatrimoineService {
   // ===== CATÉGORIES =====
@@ -74,12 +74,12 @@ export class PatrimoineService {
     return await apiClient.delete<void>(`/patrimoine/biens/${id}/`);
   }
 
-  static async getBienPhotos(id: string): Promise<StandardApiResponse<string[]>> {
-    return await apiClient.get<string[]>(`/patrimoine/biens/${id}/photos/`);
+  static async getBienPhotos(id: string): Promise<StandardApiResponse<PhotoBien[]>> {
+    return await apiClient.get<PhotoBien[]>(`/patrimoine/biens/${id}/photos/`);
   }
 
-  static async addBienPhotos(id: string, formData: FormData): Promise<StandardApiResponse<string[]>> {
-    return await apiClient.upload<string[]>(`/patrimoine/biens/${id}/photos/`, formData);
+  static async addBienPhotos(id: string, formData: FormData): Promise<StandardApiResponse<PhotoBien[]>> {
+    return await apiClient.upload<PhotoBien[]>(`/patrimoine/biens/${id}/photos/`, formData);
   }
 
   static async getBiensPublic(): Promise<StandardApiResponse<Bien[]>> {

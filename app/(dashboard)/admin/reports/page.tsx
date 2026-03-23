@@ -6,6 +6,7 @@ import { useNotifications } from '@/components/notifications/NotificationProvide
 import { useReports } from '@/components/reports/ReportProvider';
 import { ComptabiliteService } from '@/lib/comptabilite-service';
 import { StatsService } from '@/lib/stats-service';
+import { AuthService } from '@/lib/auth-service';
 import { Paiement, Depense } from '@/types/api';
 
 const currencyFormatter = new Intl.NumberFormat('fr-TG', {
@@ -77,18 +78,18 @@ export default function AdminReportsPage() {
         console.error('Expenses error:', expensesResponse.message);
       }
 
-      // Fetch dashboard stats
-      const statsResponse = await StatsService.getDashboard();
+      // Fetch admin global stats
+      const statsResponse = await StatsService.getAdminGlobalStats();
       console.log('Stats response:', statsResponse);
       if (statsResponse.success && statsResponse.data) {
         setStats({
-          totalUsers: statsResponse.data.total_locataires + 1,
-          totalProperties: statsResponse.data.total_biens,
-          totalTenants: statsResponse.data.total_locataires,
-          monthlyRevenue: statsResponse.data.revenus_mois,
-          yearlyRevenue: statsResponse.data.revenus_annee,
-          totalExpenses: statsResponse.data.depenses_mois,
-          netProfit: statsResponse.data.benefice_net,
+          totalUsers: statsResponse.data.utilisateurs.total_utilisateurs,
+          totalProperties: statsResponse.data.soumissions.total_soumissions,
+          totalTenants: statsResponse.data.utilisateurs.locataires,
+          monthlyRevenue: Number(statsResponse.data.paiements.montant_total || '0'),
+          yearlyRevenue: Number(statsResponse.data.paiements.montant_total || '0'),
+          totalExpenses: 0,
+          netProfit: Number(statsResponse.data.paiements.montant_total || '0'),
         });
       } else {
         console.error('Stats error:', statsResponse.message);
@@ -128,7 +129,7 @@ export default function AdminReportsPage() {
     return payments
       .filter(p => p.statut === 'impaye' || p.statut === 'en_retard')
       .slice(0, 5)
-      .map((p, index) => ({
+      .map((p) => ({
         propertyTitle: p.bail_detail?.bien_adresse || 'Bien inconnu',
         tenantName: p.bail_detail?.locataire_nom || 'Locataire inconnu',
         reason: p.statut === 'impaye' ? 'Paiement non reçu' : 'Paiement en retard',
@@ -216,12 +217,17 @@ export default function AdminReportsPage() {
   const exportFiscalCSV = async (annee: number) => {
     setExportLoading('fiscal');
     try {
+      const accessToken = AuthService.getAccessToken();
+      if (!accessToken) {
+        throw new Error('Utilisateur non authentifié');
+      }
+
       // Direct fetch for CSV download (returns file, not JSON)
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api'}/comptabilite/balance/export/2044/?annee=${annee}`,
+        `${AuthService.getApiBaseUrl()}/comptabilite/balance/export/2044/?annee=${annee}`,
         {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+            Authorization: `Bearer ${accessToken}`,
           },
         }
       );
@@ -236,7 +242,7 @@ export default function AdminReportsPage() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       addNotification({ type: 'info', titre: `Export fiscal ${annee} téléchargé.`, message: '' });
-    } catch (err) {
+    } catch {
       addNotification({ type: 'alerte', titre: 'Erreur lors de l\'export fiscal.', message: '' });
     } finally {
       setExportLoading(null);
@@ -276,7 +282,7 @@ export default function AdminReportsPage() {
       {/* Stats Overview */}
       {!loading && !error && (
         <section className="mb-6 rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
-          <h2 className="mb-4 text-base font-semibold text-zinc-900">Vue d'ensemble</h2>
+          <h2 className="mb-4 text-base font-semibold text-zinc-900">Vue d&apos;ensemble</h2>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div className="rounded-xl bg-zinc-50 p-4">
               <p className="text-xs text-zinc-500">Total biens</p>

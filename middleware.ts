@@ -17,6 +17,14 @@ const roleRoutes = {
   tenant: ['/tenant'],
 };
 
+function normalizeRole(role: string | undefined): 'admin' | 'owner' | 'tenant' | null {
+  if (!role) return null;
+  if (role === 'admin' || role === 'superadmin') return 'admin';
+  if (role === 'owner' || role === 'proprietaire') return 'owner';
+  if (role === 'tenant' || role === 'locataire') return 'tenant';
+  return null;
+}
+
 function isPublicRoute(pathname: string): boolean {
   return publicRoutes.some(route => {
     if (route.includes('[')) {
@@ -59,9 +67,9 @@ export function middleware(request: NextRequest) {
 
   // Vérifier si l'utilisateur a le bon rôle pour accéder à cette route
   const requiredRole = getRoleFromPath(pathname);
-  const userRole = request.cookies.get('user_role')?.value;
+  const userRole = normalizeRole(request.cookies.get('user_role')?.value);
 
-  if (requiredRole && userRole && requiredRole !== userRole) {
+  if (requiredRole && requiredRole !== userRole) {
     // Rediriger vers la page d'accueil si le rôle ne correspond pas
     return NextResponse.redirect(new URL('/', request.url));
   }

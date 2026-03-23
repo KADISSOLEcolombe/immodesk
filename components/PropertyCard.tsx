@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { BedDouble, Expand, Home } from 'lucide-react';
 import { Property } from '@/data/properties';
+import { normalizeMediaUrl } from '@/lib/utils';
 
 interface PropertyCardProps {
   property: Property;
@@ -38,7 +39,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
       return '/window.svg';
     }
 
-    return property.images[0] || '/window.svg';
+    return normalizeMediaUrl(property.images[0]);
   }, [mainImageFailed, property.images]);
   const status = statusStyles[property.status];
 
@@ -53,6 +54,7 @@ export default function PropertyCard({ property }: PropertyCardProps) {
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           className="object-cover transition-transform duration-500 group-hover:scale-105"
           onError={() => setMainImageFailed(true)}
+          unoptimized={true}
         />
         <span
           className={`absolute left-3 top-3 inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ring-1 ${status.className}`}

@@ -1,20 +1,29 @@
 "use client";
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bell, Building2, CreditCard, FileText, LayoutDashboard, Search } from 'lucide-react';
+import { Building2, CreditCard, LayoutDashboard, LogOut } from 'lucide-react';
+import { AuthService } from '@/lib/auth-service';
 
 const ownerNav = [
   { href: '/owner', label: 'Vue d\'ensemble', icon: LayoutDashboard, exact: true },
   { href: '/owner/properties', label: 'Mes biens', icon: Building2, exact: false },
   { href: '/owner/payments', label: 'Paiements', icon: CreditCard, exact: false },
-  { href: '/owner/reports', label: 'Rapports PDF', icon: FileText, exact: false },
-  { href: '/owner/notifications', label: 'Notifications', icon: Bell, exact: false },
-  { href: '/properties', label: 'Catalogue des biens', icon: Search, exact: false },
+  // { href: '/owner/reports', label: 'Rapports PDF', icon: FileText, exact: false },
+  // { href: '/owner/notifications', label: 'Notifications', icon: Bell, exact: false },
+  // { href: '/properties', label: 'Catalogue des biens', icon: Search, exact: false },
 ];
 
 export default function OwnerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    await AuthService.logout();
+  };
 
   return (
     <div className="min-h-screen bg-zinc-50 lg:flex">
@@ -45,6 +54,16 @@ export default function OwnerLayout({ children }: { children: React.ReactNode })
               );
             })}
           </nav>
+
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-3 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            <LogOut className="h-4 w-4" aria-hidden="true" />
+            <span>{isLoggingOut ? 'Déconnexion...' : 'Déconnexion'}</span>
+          </button>
         </div>
       </aside>
       <main className="min-w-0 flex-1 px-4 py-8 sm:px-6 lg:px-8 lg:py-10">

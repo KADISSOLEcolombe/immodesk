@@ -4,25 +4,36 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { FormEvent, useEffect, useState, Suspense, useRef } from 'react';
-import { Mail, Lock, User, ArrowRight, ArrowLeft, Loader2, ShieldCheck, Smartphone, Check, MessageSquare } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, ArrowLeft, Loader2, Check, MessageSquare } from 'lucide-react';
 import { AuthService } from '@/lib/auth-service';
 
 type UserRole = 'tenant' | 'owner' | 'admin';
-type LoginStep = 'credentials' | '2fa_selection' | '2fa_verify';
+type LoginStep = 'credentials' | '2fa_verify';
 type TwoFactorMethod = 'email' | 'sms' | null;
+
+type TwoFAChallengeData = {
+  otp_token?: string;
+  canal?: 'mail' | 'sms';
+};
 
 function normalizeRole(role: string | null): UserRole {
   if (role === 'tenant' || role === 'locataire') return 'tenant';
   if (role === 'owner' || role === 'proprietaire') return 'owner';
-  if (role === 'admin') return 'admin';
+  if (role === 'admin' || role === 'superadmin') return 'admin';
   return 'tenant';
 }
 
-function roleTarget(role: UserRole) {
-  if (role === 'tenant') return '/tenant';
-  if (role === 'owner') return '/owner';
-  if (role === 'admin') return '/admin';
-  return '/tenant';
+function resolvePostLoginTarget(defaultTarget: string, redirectTarget: string | null): string {
+  if (!redirectTarget) {
+    return defaultTarget;
+  }
+
+  // Empêche les redirections externes et conserve le fallback dashboard.
+  if (!redirectTarget.startsWith('/') || redirectTarget.startsWith('//')) {
+    return defaultTarget;
+  }
+
+  return redirectTarget;
 }
 
 function LoginForm() {
@@ -66,8 +77,9 @@ function LoginForm() {
         if (response.code === 'AUTH_2FA_REQUIRED') {
           console.log('🔐 2FA requis, passage à l\'étape de vérification');
           // Stocker le token temporaire pour la vérification
-          const otpToken = (response.data as any)?.otp_token;
-          const canal = (response.data as any)?.canal;
+          const twoFaData = (response.data ?? {}) as TwoFAChallengeData;
+          const otpToken = twoFaData.otp_token;
+          const canal = twoFaData.canal;
           if (otpToken) {
             AuthService.setTempOTPData(otpToken, canal || 'mail');
           }
@@ -77,12 +89,9 @@ function LoginForm() {
           return;
         }
         
-        // Rediriger selon le rôle de l'utilisateur
-        const userRole = AuthService.getUserRole();
-        
-        // Pour la démo, on utilise le rôle sélectionné dans le formulaire
-        // En production, on utilisera le rôle retourné par le backend
-        router.push(roleTarget(role));
+        const defaultTarget = AuthService.getDashboardRouteForCurrentUser();
+        const redirectTarget = searchParams.get('redirect');
+        router.push(resolvePostLoginTarget(defaultTarget, redirectTarget));
       } else {
         // Afficher l'erreur du backend
         alert(response.message || 'Erreur lors de la connexion');
@@ -93,17 +102,6 @@ function LoginForm() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleMethodSelect = async (method: 'email' | 'sms') => {
-    setTwoFactorMethod(method);
-    setIsLoading(true);
-    // Simulate sending code
-    await new Promise(resolve => setTimeout(resolve, 800));
-    // For demo purposes, we auto-fill the code so the user doesn't get blocked
-    setVerificationCode(['1', '2', '3', '4', '5', '6']);
-    setIsLoading(false);
-    setStep('2fa_verify');
   };
 
   const handleCodeChange = (index: number, value: string) => {
@@ -136,9 +134,9 @@ function LoginForm() {
       
       if (response.success) {
         console.log('✅ 2FA vérifié avec succès');
-        // Rediriger selon le rôle
-        const userRole = AuthService.getUserRole();
-        router.push(roleTarget(role));
+        const defaultTarget = AuthService.getDashboardRouteForCurrentUser();
+        const redirectTarget = searchParams.get('redirect');
+        router.push(resolvePostLoginTarget(defaultTarget, redirectTarget));
       } else {
         alert(response.message || 'Code invalide');
         // Réinitialiser le code en cas d'erreur
@@ -255,26 +253,7 @@ function LoginForm() {
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-700 mb-1.5">Je me connecte en tant que</label>
-                    <div className="relative">
-                       <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
-                       <select
-                        value={role}
-                        onChange={(e) => setRole(e.target.value as UserRole)}
-                        className="w-full pl-10 pr-10 py-3 rounded-xl border border-zinc-200 bg-white text-zinc-900 focus:border-zinc-900 focus:ring-4 focus:ring-zinc-900/5 outline-none transition-all appearance-none cursor-pointer"
-                       >
-                        <option value="tenant">Locataire</option>
-                        <option value="owner">Propriétaire</option>
-                        <option value="admin">Administrateur</option>
-                       </select>
-                       <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                          <svg className="w-4 h-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                          </svg>
-                       </div>
-                    </div>
-                  </div>
+                 
                 </div>
 
                 <div className="flex items-center justify-between text-sm">
@@ -301,67 +280,13 @@ function LoginForm() {
                 </button>
               </form>
 
-              <p className="text-center text-sm text-zinc-500">
+              {/* <p className="text-center text-sm text-zinc-500">
                 Pas encore de compte ?{' '}
                 <Link href="/register" className="font-semibold text-zinc-900 hover:underline">
-                  S'inscrire
+                  S&apos;inscrire
                 </Link>
-              </p>
+              </p> */}
             </>
-          )}
-
-          {/* STEP 2: 2FA Method Selection */}
-          {step === '2fa_selection' && (
-            <div className="text-center">
-              <div className="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <ShieldCheck className="w-8 h-8 text-zinc-900" />
-              </div>
-              <h1 className="text-2xl font-bold text-zinc-900 mb-2">Double Authentification</h1>
-              <p className="text-zinc-500 mb-8">Pour sécuriser votre compte, veuillez choisir une méthode de vérification.</p>
-
-              <div className="space-y-4">
-                <button
-                  onClick={() => handleMethodSelect('sms')}
-                  disabled={isLoading}
-                  className="w-full flex items-center justify-between p-4 rounded-xl border border-zinc-200 hover:border-zinc-900 hover:bg-zinc-50 transition-all group text-left"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
-                      <Smartphone className="w-5 h-5 text-zinc-600 group-hover:text-zinc-900" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-zinc-900">SMS</div>
-                      <div className="text-sm text-zinc-500">Recevoir un code par SMS</div>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-5 h-5 text-zinc-300 group-hover:text-zinc-900 transition-colors" />
-                </button>
-
-                <button
-                  onClick={() => handleMethodSelect('email')}
-                  disabled={isLoading}
-                  className="w-full flex items-center justify-between p-4 rounded-xl border border-zinc-200 hover:border-zinc-900 hover:bg-zinc-50 transition-all group text-left"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center group-hover:bg-white group-hover:shadow-sm transition-all">
-                      <Mail className="w-5 h-5 text-zinc-600 group-hover:text-zinc-900" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-zinc-900">Email</div>
-                      <div className="text-sm text-zinc-500">Recevoir un code par email</div>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-5 h-5 text-zinc-300 group-hover:text-zinc-900 transition-colors" />
-                </button>
-              </div>
-
-              <button 
-                onClick={() => setStep('credentials')}
-                className="mt-8 text-sm text-zinc-500 hover:text-zinc-900 underline"
-              >
-                Retour à la connexion
-              </button>
-            </div>
           )}
 
           {/* STEP 3: Verification Code */}
@@ -412,7 +337,7 @@ function LoginForm() {
               </form>
 
               <div className="mt-6 text-sm text-zinc-500">
-                Vous n'avez pas reçu le code ?{' '}
+                Vous n&apos;avez pas reçu le code ?{' '}
                 <button 
                   onClick={handleResendCode}
                   disabled={isLoading}
@@ -423,10 +348,13 @@ function LoginForm() {
               </div>
               
               <button 
-                onClick={() => setStep('2fa_selection')}
+                onClick={() => {
+                  setVerificationCode(['', '', '', '', '', '']);
+                  setStep('credentials');
+                }}
                 className="mt-4 text-sm text-zinc-400 hover:text-zinc-600"
               >
-                Changer de méthode
+                Retour à la connexion
               </button>
             </div>
           )}
