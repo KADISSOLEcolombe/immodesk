@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
-import { CheckCircle2, Eye, Loader2 } from 'lucide-react';
+import { CheckCircle2, Eye, Loader2, X } from 'lucide-react';
 import ProtectedMediaImage from '@/components/ProtectedMediaImage';
+import { useNotifications } from '@/components/notifications/NotificationProvider';
 import { PatrimoineService } from '@/lib/patrimoine-service';
 import { getSubmissionPropertyInfo } from '@/lib/submission-utils';
 import { SoumissionBien } from '@/types/api';
@@ -29,10 +30,14 @@ const statusClass: Record<SubmissionStatus, string> = {
 };
 
 export default function AdminSubmissionsPage() {
+  const { addNotification } = useNotifications();
   const [submissions, setSubmissions] = useState<SoumissionBien[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | SubmissionStatus>('all');
+  const [isProcessingId, setIsProcessingId] = useState<string | null>(null);
+  const [rejectingSubmissionId, setRejectingSubmissionId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   // Fetch submissions on mount
   useEffect(() => {
@@ -59,6 +64,97 @@ export default function AdminSubmissionsPage() {
   const filtered = filter === 'all' 
     ? submissions 
     : submissions.filter((s) => s.statut === filter);
+
+  const updateSubmissionStatus = (submissionId: string, statut: SubmissionStatus, justification_refus = '') => {
+    setSubmissions((current) =>
+      current.map((item) =>
+        item.id === submissionId
+          ? {
+              ...item,
+              statut,
+              justification_refus: justification_refus || item.justification_refus,
+            }
+          : item,
+      ),
+    );
+  };
+
+  const handlePublish = async (submission: SoumissionBien) => {
+    setIsProcessingId(submission.id);
+    try {
+      const response = await PatrimoineService.publierSoumission(submission.id);
+      if (!response.success) {
+        addNotification({
+          type: 'alerte',
+          titre: response.message || 'Publication impossible',
+          message: '',
+        });
+        return;
+      }
+
+      updateSubmissionStatus(submission.id, 'publie');
+      addNotification({
+        type: 'info',
+        titre: 'Soumission publiée',
+        message: '',
+      });
+    } catch (actionError) {
+      console.error('Erreur publication soumission:', actionError);
+      addNotification({
+        type: 'alerte',
+        titre: 'Erreur de connexion',
+        message: '',
+      });
+    } finally {
+      setIsProcessingId(null);
+    }
+  };
+
+  const openRejectModal = (submissionId: string) => {
+    setRejectingSubmissionId(submissionId);
+    setRejectReason('');
+  };
+
+  const closeRejectModal = () => {
+    setRejectingSubmissionId(null);
+    setRejectReason('');
+  };
+
+  const handleReject = async () => {
+    if (!rejectingSubmissionId || rejectReason.trim().length < 10) {
+      return;
+    }
+
+    setIsProcessingId(rejectingSubmissionId);
+    try {
+      const response = await PatrimoineService.refuserSoumission(rejectingSubmissionId, rejectReason.trim());
+      if (!response.success) {
+        addNotification({
+          type: 'alerte',
+          titre: response.message || 'Refus impossible',
+          message: '',
+        });
+        return;
+      }
+
+      updateSubmissionStatus(rejectingSubmissionId, 'refuse', rejectReason.trim());
+      addNotification({
+        type: 'info',
+        titre: 'Soumission refusée',
+        message: '',
+      });
+      closeRejectModal();
+    } catch (actionError) {
+      console.error('Erreur refus soumission:', actionError);
+      addNotification({
+        type: 'alerte',
+        titre: 'Erreur de connexion',
+        message: '',
+      });
+    } finally {
+      setIsProcessingId(null);
+    }
+  };
 
   const counts = {
     all: submissions.length,
@@ -158,7 +254,34 @@ export default function AdminSubmissionsPage() {
                     <Eye className="h-3.5 w-3.5" />
                     Voir détails complets
                   </Link>
+
+                  {submission.statut === 'en_examen' && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handlePublish(submission)}
+                        disabled={isProcessingId === submission.id}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-zinc-800 disabled:opacity-60"
+                      >
+                        {isProcessingId === submission.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                        Publier
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openRejectModal(submission.id)}
+                        disabled={isProcessingId === submission.id}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-60"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        Refuser
+                      </button>
+                    </>
+                  )}
                 </div>
+
+                {submission.statut === 'refuse' && submission.justification_refus ? (
+                  <p className="mt-2 text-xs text-red-700">Motif: {submission.justification_refus}</p>
+                ) : null}
               </article>
             );
           })}
@@ -168,6 +291,42 @@ export default function AdminSubmissionsPage() {
           )}
         </div>
       </section>
+
+      {rejectingSubmissionId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
+          <div className="w-full max-w-lg rounded-2xl border border-black/5 bg-white p-5 shadow-xl sm:p-6">
+            <h2 className="text-base font-semibold text-zinc-900">Refuser la soumission</h2>
+            <p className="mt-1 text-sm text-zinc-600">Saisissez un motif de refus (minimum 10 caractères).</p>
+
+            <textarea
+              value={rejectReason}
+              onChange={(event) => setRejectReason(event.target.value)}
+              rows={4}
+              className="mt-3 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-zinc-400"
+              placeholder="Motif du refus..."
+            />
+
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={closeRejectModal}
+                className="inline-flex rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={handleReject}
+                disabled={isProcessingId === rejectingSubmissionId || rejectReason.trim().length < 10}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
+              >
+                {isProcessingId === rejectingSubmissionId ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
+                Confirmer le refus
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </>
   );

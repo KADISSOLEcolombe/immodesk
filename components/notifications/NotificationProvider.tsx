@@ -41,6 +41,7 @@ type NotificationContextValue = {
   addNotification: (payload: NotificationInput) => void;
   markAsRead: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  deleteNotification: (id: string) => Promise<void>;
   refreshNotifications: () => Promise<void>;
   isLoading: boolean;
 };
@@ -53,6 +54,7 @@ const STORAGE_KEY = 'immodesk.notifications.v1';
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<AppNotification[]>(initialNotifications);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
@@ -98,6 +100,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    const role = (AuthService.getUserRole() as UserRole | null) || userRole;
+    if (role === 'superadmin') {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+
     // Avoid concurrent calls using ref (doesn't trigger re-render)
     if (isFetching.current) {
       return;
@@ -106,9 +115,19 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     isFetching.current = true;
     setIsLoading(true);
     try {
-      const response = await NotificationsService.getNotifications();
-      if (response.success && response.data) {
-        setNotifications(response.data);
+      const [notificationsResponse, unreadResponse] = await Promise.all([
+        NotificationsService.getNotifications(),
+        NotificationsService.countUnread(),
+      ]);
+
+      if (notificationsResponse.success && notificationsResponse.data) {
+        setNotifications(notificationsResponse.data);
+      }
+
+      if (unreadResponse.success && unreadResponse.data) {
+        setUnreadCount(Number(unreadResponse.data.count ?? 0));
+      } else if (notificationsResponse.success && notificationsResponse.data) {
+        setUnreadCount(notificationsResponse.data.filter((item) => !item.lue).length);
       }
     } catch (error) {
       console.error('Erreur lors du rafraîchissement des notifications:', error);
@@ -116,7 +135,15 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
       isFetching.current = false;
     }
-  }, []);
+  }, [userRole]);
+
+  useEffect(() => {
+    if (!AuthService.isAuthenticated()) {
+      return;
+    }
+
+    refreshNotifications();
+  }, [refreshNotifications]);
 
   const addNotification = (payload: NotificationInput) => {
     const now = new Date();
@@ -133,15 +160,21 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       },
       ...current,
     ]);
+    setUnreadCount((current) => current + 1);
   };
 
   const markAsRead = async (id: string) => {
     try {
       const response = await NotificationsService.markAsRead(id);
       if (response.success) {
-        setNotifications((current) =>
-          current.map((item) => (item.id === id ? { ...item, lue: true } : item))
-        );
+        setNotifications((current) => {
+          const target = current.find((item) => item.id === id);
+          if (target && !target.lue) {
+            setUnreadCount((count) => Math.max(0, count - 1));
+          }
+
+          return current.map((item) => (item.id === id ? { ...item, lue: true } : item));
+        });
       }
     } catch (error) {
       console.error('Erreur lors du marquage comme lu:', error);
@@ -153,9 +186,33 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       const response = await NotificationsService.markAllAsRead();
       if (response.success) {
         setNotifications((current) => current.map((item) => ({ ...item, lue: true })));
+        setUnreadCount(0);
+      } else {
+        setNotifications((current) => current.map((item) => ({ ...item, lue: true })));
+        setUnreadCount(0);
       }
     } catch (error) {
       console.error('Erreur lors du marquage de toutes les notifications:', error);
+      setNotifications((current) => current.map((item) => ({ ...item, lue: true })));
+      setUnreadCount(0);
+    }
+  };
+
+  const deleteNotification = async (id: string) => {
+    try {
+      const response = await NotificationsService.deleteNotification(id);
+      if (response.success) {
+        setNotifications((current) => {
+          const target = current.find((item) => item.id === id);
+          if (target && !target.lue) {
+            setUnreadCount((count) => Math.max(0, count - 1));
+          }
+          return current.filter((item) => item.id !== id);
+        });
+      }
+    } catch (error) {
+      console.error('Erreur lors de la suppression de notification:', error);
+      throw error;
     }
   };
 
@@ -166,7 +223,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       allowedTypes.includes(item.type)
     );
 
-    const unreadCount = notifications.filter((item) => !item.lue).length;
     const filteredUnreadCount = filteredNotifications.filter((item) => !item.lue).length;
 
     return {
@@ -178,10 +234,11 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       addNotification,
       markAsRead,
       markAllAsRead,
+      deleteNotification,
       refreshNotifications,
       isLoading,
     };
-  }, [notifications, isLoading, userRole]);
+  }, [notifications, unreadCount, isLoading, userRole, refreshNotifications]);
 
   return <NotificationContext.Provider value={value}>{children}</NotificationContext.Provider>;
 }

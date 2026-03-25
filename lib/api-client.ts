@@ -273,6 +273,24 @@ class ApiClient {
     });
     return response.data;
   }
+
+  async uploadPut<T>(url: string, formData: FormData): Promise<StandardApiResponse<T>> {
+    const response: AxiosResponse<StandardApiResponse<T>> = await this.client.put(url, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  }
+
+  async uploadPatch<T>(url: string, formData: FormData): Promise<StandardApiResponse<T>> {
+    const response: AxiosResponse<StandardApiResponse<T>> = await this.client.patch(url, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  }
 }
 
 export const apiClient = new ApiClient();

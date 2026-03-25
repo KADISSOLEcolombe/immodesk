@@ -13,6 +13,12 @@ export interface InitierPaiementData {
   cvv?: string;
 }
 
+export interface UpdateConfigSimulateurPayload {
+  moyen_paiement: MoyenPaiement;
+  taux_succes: number;
+  delai_secondes: number;
+}
+
 export class PaiementEnLigneService {
   // ===== TRANSACTIONS LOCATAIRE =====
   
@@ -63,8 +69,8 @@ export class PaiementEnLigneService {
   /**
    * Mettre à jour la configuration du simulateur
    */
-  static async updateConfigSimulateur(configs: Partial<ConfigSimulateur>[]): Promise<StandardApiResponse<ConfigSimulateur[]>> {
-    return await apiClient.put<ConfigSimulateur[]>('/paiement/simulateur/config/update/', configs);
+  static async updateConfigSimulateur(payload: UpdateConfigSimulateurPayload): Promise<StandardApiResponse<ConfigSimulateur>> {
+    return await apiClient.put<ConfigSimulateur>('/paiement/simulateur/config/update/', payload);
   }
 
   /**

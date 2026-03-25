@@ -15,20 +15,15 @@ export default function BalancePage() {
     try {
       setIsExporting(true);
       const annee = new Date().getFullYear();
-      const response = await ComptabiliteService.export2044({ annee });
-      
-      if (response.success) {
-        // Créer un blob et télécharger le fichier
-        const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `declaration_2044_${annee}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-      }
+      const blob = await ComptabiliteService.export2044({ annee });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `declaration_2044_${annee}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
     } catch (error) {
       console.error('Erreur lors de l\'export:', error);
     } finally {

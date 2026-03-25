@@ -14,11 +14,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import {
-  adminMonthlyPaymentTrendMock,
-  adminPaymentDistributionMock,
-  adminVisitConversionMock,
-} from '@/data/admin-dashboard-mock';
+import { AdminGlobalStats, AdminMonthlyPaymentTrendPoint } from '@/lib/stats-service';
 
 const numberFormatter = new Intl.NumberFormat('fr-FR');
 
@@ -49,15 +45,33 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
   );
 }
 
-export function AdminOverviewCharts() {
-  const totalPayments = adminPaymentDistributionMock.reduce((acc, item) => acc + item.value, 0);
-  const totalVisits = adminVisitConversionMock.reduce((acc, item) => acc + item.value, 0);
+type AdminOverviewChartsProps = {
+  globalStats: AdminGlobalStats | null;
+  monthlyTrend: AdminMonthlyPaymentTrendPoint[];
+};
+
+export function AdminOverviewCharts({ globalStats, monthlyTrend }: AdminOverviewChartsProps) {
+  const paymentDistribution = [
+    { name: 'Valides', value: globalStats?.paiements.valide ?? 0, color: '#16a34a' },
+    { name: 'En attente', value: globalStats?.paiements.en_attente ?? 0, color: '#f59e0b' },
+    { name: 'Echoues', value: globalStats?.paiements.echoue ?? 0, color: '#ef4444' },
+    { name: 'Annules', value: globalStats?.paiements.annule ?? 0, color: '#71717a' },
+  ];
+
+  const visitConversion = [
+    { name: 'Utilisees', value: globalStats?.visites.utilisees ?? 0, color: '#0ea5e9' },
+    { name: 'Non utilisees', value: globalStats?.visites.non_utilisees ?? 0, color: '#a1a1aa' },
+  ];
+
+  const totalPayments = paymentDistribution.reduce((acc, item) => acc + item.value, 0);
+  const totalVisits = visitConversion.reduce((acc, item) => acc + item.value, 0);
+  const trendData = monthlyTrend.length > 0 ? monthlyTrend : [{ mois: 'N/A', valides: 0, enAttente: 0, echoues: 0 }];
 
   return (
     <section className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-zinc-900">Vue analytique (mock data)</h2>
-        <p className="text-sm text-zinc-600">Graphiques de demonstration Recharts, prets a etre relies aux donnees API.</p>
+        <h2 className="text-lg font-semibold text-zinc-900">Vue analytique</h2>
+        <p className="text-sm text-zinc-600">Graphiques relies aux donnees API du backend.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
@@ -69,7 +83,7 @@ export function AdminOverviewCharts() {
 
           <div className="h-72 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={adminMonthlyPaymentTrendMock} margin={{ top: 10, right: 8, left: -16, bottom: 0 }}>
+              <AreaChart data={trendData} margin={{ top: 10, right: 8, left: -16, bottom: 0 }}>
                 <XAxis dataKey="mois" tickLine={false} axisLine={false} tick={{ fill: '#52525b', fontSize: 12 }} />
                 <YAxis tickLine={false} axisLine={false} tick={{ fill: '#71717a', fontSize: 12 }} />
                 <Tooltip content={<ChartTooltip />} />
@@ -92,7 +106,7 @@ export function AdminOverviewCharts() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={adminPaymentDistributionMock}
+                  data={paymentDistribution}
                   cx="50%"
                   cy="50%"
                   innerRadius={52}
@@ -103,7 +117,7 @@ export function AdminOverviewCharts() {
                   label={({ percent }) => `${((percent || 0) * 100).toFixed(0)}%`}
                   labelLine={false}
                 >
-                  {adminPaymentDistributionMock.map((entry) => (
+                  {paymentDistribution.map((entry) => (
                     <Cell key={entry.name} fill={entry.color} />
                   ))}
                 </Pie>
@@ -123,12 +137,12 @@ export function AdminOverviewCharts() {
 
         <div className="h-64 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={adminVisitConversionMock} margin={{ top: 10, right: 10, left: -16, bottom: 0 }}>
+            <BarChart data={visitConversion} margin={{ top: 10, right: 10, left: -16, bottom: 0 }}>
               <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fill: '#52525b', fontSize: 12 }} />
               <YAxis tickLine={false} axisLine={false} tick={{ fill: '#71717a', fontSize: 12 }} />
               <Tooltip content={<ChartTooltip />} />
               <Bar dataKey="value" radius={[8, 8, 0, 0]}>
-                {adminVisitConversionMock.map((entry) => (
+                {visitConversion.map((entry) => (
                   <Cell key={entry.name} fill={entry.color} />
                 ))}
               </Bar>

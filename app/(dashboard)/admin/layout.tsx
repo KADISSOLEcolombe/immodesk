@@ -3,16 +3,19 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Building2, CheckCircle2, CreditCard, FileText, LayoutDashboard, LogOut, Settings2, Tags, Users, Video } from 'lucide-react';
+import { BarChart3, Bell, Building2, CheckCircle2, CreditCard, FileText, LayoutDashboard, LogOut, Settings2, Tags, Users, Video } from 'lucide-react';
 import { AuthService } from '@/lib/auth-service';
 
 const adminNav = [
   { href: '/admin', label: 'Vue d\'ensemble', icon: LayoutDashboard, exact: true },
   { href: '/admin/users', label: 'Utilisateurs', icon: Users, exact: false },
   { href: '/admin/properties', label: 'Tous les biens', icon: Building2, exact: false },
+  { href: '/admin/buildings', label: 'Immeubles', icon: Building2, exact: false },
   { href: '/admin/categories', label: 'Catégories', icon: Tags, exact: false },
   { href: '/admin/submissions', label: 'Soumissions', icon: CheckCircle2, exact: false },
   { href: '/admin/payments', label: 'Paiements', icon: CreditCard, exact: false },
+  { href: '/admin/comptabilite/depenses', label: 'Dépenses globales', icon: FileText, exact: false },
+  { href: '/admin/notifications', label: 'Notifications', icon: Bell, exact: false },
   // { href: '/admin/virtual-visits', label: 'Visites 360°', icon: Video, exact: false },
   // { href: '/admin/reports', label: 'Rapports', icon: FileText, exact: false },
   // { href: '/admin/settings', label: 'Configuration', icon: Settings2, exact: false },

@@ -114,13 +114,15 @@ interface OwnerTransactionUI {
 
 export default function OwnerPaymentsPage() {
   const { addNotification } = useNotifications();
-  
   const [payments, setPayments] = useState<PaymentUI[]>([]);
   const [onlineTransactions, setOnlineTransactions] = useState<OwnerTransactionUI[]>([]);
   const [balance, setBalance] = useState<Balance | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshingReference, setRefreshingReference] = useState<string | null>(null);
+  const [baux, setBaux] = useState<BailOwnerView[]>([]);
+  const [bauxLoading, setBauxLoading] = useState(false);
+  const [bauxActionId, setBauxActionId] = useState<string | null>(null);
 
   // Charger les paiements comptables, transactions en ligne et la balance
   useEffect(() => {
@@ -159,15 +161,15 @@ export default function OwnerPaymentsPage() {
         setBalance(balanceResponse.data);
       }
 
-      const baux = ((bauxResponse.data || []) as BailOwnerView[]);
-      if (baux.length > 0) {
+      const bauxList = ((bauxResponse.data || []) as BailOwnerView[]);
+      setBaux(bauxList);
+      if (bauxList.length > 0) {
         const results = await Promise.allSettled(
-          baux.map(async (bail) => {
+          bauxList.map(async (bail) => {
             const transactionResponse = await PaiementEnLigneService.getHistoriqueParBail(bail.id);
             if (!transactionResponse.success || !transactionResponse.data) {
               return [] as OwnerTransactionUI[];
             }
-
             return transactionResponse.data.map((tx) => ({
               id: tx.id,
               reference: tx.reference,
@@ -183,16 +185,116 @@ export default function OwnerPaymentsPage() {
             }));
           })
         );
-
         const merged = results
           .filter((result): result is PromiseFulfilledResult<OwnerTransactionUI[]> => result.status === 'fulfilled')
           .flatMap((result) => result.value)
           .sort((a, b) => new Date(b.initiatedAt).getTime() - new Date(a.initiatedAt).getTime());
-
         setOnlineTransactions(merged);
       } else {
         setOnlineTransactions([]);
       }
+      // Actions réviser/terminer bail
+      const handleReviserBail = async (bailId: string) => {
+        setBauxActionId(bailId);
+        try {
+          const response = await LocationsService.reviserBail(bailId);
+          if (!response.success) {
+            addNotification({
+              type: 'bail',
+              titre: 'Révision échouée',
+              message: response.message || 'Impossible de réviser le bail.',
+            });
+            return;
+          }
+          addNotification({
+            type: 'bail',
+            titre: 'Bail révisé',
+            message: 'Le bail a été révisé avec succès.',
+          });
+          // Refresh baux
+          loadData();
+        } catch (err) {
+          addNotification({
+            type: 'bail',
+            titre: 'Erreur technique',
+            message: 'Erreur lors de la révision du bail.',
+          });
+        } finally {
+          setBauxActionId(null);
+        }
+      };
+
+      const handleTerminerBail = async (bailId: string) => {
+        setBauxActionId(bailId);
+        try {
+          const response = await LocationsService.terminerBail(bailId);
+          if (!response.success) {
+            addNotification({
+              type: 'bail',
+              titre: 'Fin échouée',
+              message: response.message || 'Impossible de terminer le bail.',
+            });
+            return;
+          }
+          addNotification({
+            type: 'bail',
+            titre: 'Bail terminé',
+            message: 'Le bail a été terminé avec succès.',
+          });
+          // Refresh baux
+          loadData();
+        } catch (err) {
+          addNotification({
+            type: 'bail',
+            titre: 'Erreur technique',
+            message: 'Erreur lors de la terminaison du bail.',
+          });
+        } finally {
+          setBauxActionId(null);
+        }
+      };
+          {/* Section Mes baux propriétaire */}
+          <section className="mb-6 rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
+            <h2 className="mb-4 text-base font-semibold text-zinc-900">Mes baux actifs</h2>
+            {bauxLoading || isLoading ? (
+              <div className="flex flex-col items-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+                <p className="mt-2 text-sm text-zinc-500">Chargement des baux...</p>
+              </div>
+            ) : baux.length === 0 ? (
+              <p className="text-sm text-zinc-500">Aucun bail actif.</p>
+            ) : (
+              <div className="space-y-3">
+                {baux.map((bail) => (
+                  <article key={bail.id} className="flex flex-col gap-2 rounded-xl border border-zinc-100 bg-zinc-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-zinc-900">{bail.bien_adresse || 'Bien inconnu'} · {bail.locataire_nom || 'Locataire inconnu'}</p>
+                      <p className="text-xs text-zinc-500">Début: {bail.date_debut} · Fin: {bail.date_fin}</p>
+                      <p className="text-xs text-zinc-500">Loyer: {currencyFormatter.format(bail.loyer_mensuel)}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        disabled={bauxActionId === bail.id}
+                        onClick={() => handleReviserBail(bail.id)}
+                        className="inline-flex items-center rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-60"
+                      >
+                        {bauxActionId === bail.id ? 'Révision...' : 'Réviser'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={bauxActionId === bail.id}
+                        onClick={() => handleTerminerBail(bail.id)}
+                        className="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-100 disabled:opacity-60"
+                      >
+                        {bauxActionId === bail.id ? 'Fin...' : 'Terminer'}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+          </section>
     } catch (err) {
       console.error('Erreur lors du chargement des données:', err);
       setError('Erreur lors du chargement des paiements');

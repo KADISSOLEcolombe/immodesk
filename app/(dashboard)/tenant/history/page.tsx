@@ -74,6 +74,11 @@ const mapMoyenPaiementToUI = (moyen: MoyenPaiement): { channel: PaymentChannelUI
   }
 };
 
+const toAmountNumber = (value: unknown): number => {
+  const amount = Number(value);
+  return Number.isFinite(amount) ? amount : 0;
+};
+
 // Mapper TransactionPaiement (backend) vers PaymentRecordUI
 const mapTransactionToUI = (transaction: TransactionPaiement): PaymentRecordUI => {
   const { channel, operator } = mapMoyenPaiementToUI(transaction.moyen_paiement);
@@ -85,7 +90,7 @@ const mapTransactionToUI = (transaction: TransactionPaiement): PaymentRecordUI =
     tenantName: '', // Sera rempli si nécessaire depuis le bail
     propertyTitle: '', // Sera rempli si nécessaire depuis le bail
     month: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
-    amount: transaction.montant,
+    amount: toAmountNumber(transaction.montant),
     channel,
     operator,
     phone: transaction.numero_telephone || undefined,
@@ -133,6 +138,7 @@ export default function TenantHistoryPage() {
   const [payments, setPayments] = useState<PaymentRecordUI[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cancelingReference, setCancelingReference] = useState<string | null>(null);
   
   // États pour les filtres
   const [filterFrom, setFilterFrom] = useState('');
@@ -198,6 +204,49 @@ export default function TenantHistoryPage() {
     });
   };
 
+  const handleCancelTransaction = async (item: PaymentRecordUI) => {
+    if (item.status !== 'pending' || cancelingReference) {
+      return;
+    }
+
+    setCancelingReference(item.reference);
+    try {
+      const response = await PaiementEnLigneService.annulerTransaction(item.reference);
+      if (response.success && response.data) {
+        const updated = mapTransactionToUI(response.data);
+        setPayments((current) =>
+          current.map((payment) =>
+            payment.reference === item.reference
+              ? {
+                  ...payment,
+                  ...updated,
+                }
+              : payment
+          )
+        );
+        addNotification({
+          type: 'paiement',
+          titre: 'Transaction annulée',
+          message: `La transaction ${item.reference} a été annulée.`,
+        });
+      } else {
+        addNotification({
+          type: 'alerte',
+          titre: response.message || 'Annulation impossible',
+          message: '',
+        });
+      }
+    } catch (err) {
+      addNotification({
+        type: 'alerte',
+        titre: 'Erreur technique lors de l\'annulation',
+        message: '',
+      });
+    } finally {
+      setCancelingReference(null);
+    }
+  };
+
   const statusMeta = (status: PaymentStatusUI) => {
     if (status === 'success') return { label: 'Réussi', icon: CheckCircle2, badge: 'bg-emerald-50 text-emerald-700 ring-emerald-200' };
     if (status === 'failed') return { label: 'Échoué', icon: XCircle, badge: 'bg-red-50 text-red-700 ring-red-200' };
@@ -216,7 +265,7 @@ export default function TenantHistoryPage() {
   };
 
   const summary = useMemo(() => {
-    const total = payments.reduce((acc, p) => acc + p.amount, 0);
+    const total = payments.reduce((acc, p) => acc + toAmountNumber(p.amount), 0);
     const success = payments.filter((p) => p.status === 'success');
     const pending = payments.filter((p) => p.status === 'pending');
     const failed = payments.filter((p) => p.status === 'failed');
@@ -525,6 +574,20 @@ export default function TenantHistoryPage() {
                           >
                             <FileText className="h-4 w-4" aria-hidden="true" />
                             Reçu PDF + Email
+                          </button>
+                        ) : item.status === 'pending' ? (
+                          <button
+                            type="button"
+                            onClick={() => handleCancelTransaction(item)}
+                            disabled={cancelingReference === item.reference}
+                            className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {cancelingReference === item.reference ? (
+                              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                            ) : (
+                              <XCircle className="h-4 w-4" aria-hidden="true" />
+                            )}
+                            Annuler la transaction
                           </button>
                         ) : (
                           <div className="inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 text-sm font-semibold text-zinc-600">

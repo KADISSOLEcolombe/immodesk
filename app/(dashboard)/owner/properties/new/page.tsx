@@ -150,22 +150,19 @@ export default function OwnerPropertyCreatePage() {
     );
   };
 
-  const handleAddProperty = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  // Nouvelle fonction pour créer un bien directement
+  const handleCreateDirect = async () => {
     setFormFeedback('');
-
     if (!formData.adresse.trim() || !formData.categorie_id || !formData.loyer_hc) {
       setFormFeedback('Adresse, catégorie et loyer hors charges sont obligatoires.');
       return;
     }
-
     const hasLatitude = Boolean(formData.latitude);
     const hasLongitude = Boolean(formData.longitude);
     if (hasLatitude !== hasLongitude) {
       setFormFeedback('Merci de renseigner les deux champs latitude et longitude.');
       return;
     }
-
     if (hasLatitude && hasLongitude) {
       const latitude = Number(formData.latitude);
       const longitude = Number(formData.longitude);
@@ -174,7 +171,70 @@ export default function OwnerPropertyCreatePage() {
         return;
       }
     }
+    // Construction du payload pour createBien
+    const payload: Partial<import('@/types/api').Bien> = {
+      adresse: formData.adresse.trim(),
+      categorie: formData.categorie_id,
+      loyer_hc: Number(formData.loyer_hc),
+      description: formData.description.trim() || undefined,
+      charges: formData.charges ? Number(formData.charges) : undefined,
+      immeuble: formData.immeuble_id || undefined,
+      latitude: formData.latitude ? Number(formData.latitude) : undefined,
+      longitude: formData.longitude ? Number(formData.longitude) : undefined,
+      lien_maps: formData.lien_maps.trim() || undefined,
+      type_logement: formData.type_logement || undefined,
+      categorie_logement: formData.categorie_logement || undefined,
+      nombre_pieces: formData.nb_pieces ? Number(formData.nb_pieces) : undefined,
+      surface: formData.surface_m2 ? Number(formData.surface_m2) : undefined,
+      standing: formData.standing || undefined,
+      etage: formData.etage ? Number(formData.etage) : undefined,
+      amenagement: formData.amenagement || undefined,
+      // Les champs suivants sont optionnels ou à adapter selon le modèle backend
+      // ...
+    };
+    try {
+      setIsSubmitting(true);
+      const response = await PatrimoineService.createBien(payload);
+      if (!response.success) {
+        setFormFeedback(response.message || 'La création directe a échoué.');
+        return;
+      }
+      addNotification({
+        type: 'info',
+        titre: 'Bien créé',
+        message: 'Votre bien a été créé directement et est disponible.',
+      });
+      router.push('/owner/properties');
+    } catch (err) {
+      console.error('Erreur lors de la création directe du bien:', err);
+      setFormFeedback('Erreur technique lors de la création directe du bien.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
+  // Handler existant pour la soumission classique
+  const handleAddProperty = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setFormFeedback('');
+    if (!formData.adresse.trim() || !formData.categorie_id || !formData.loyer_hc) {
+      setFormFeedback('Adresse, catégorie et loyer hors charges sont obligatoires.');
+      return;
+    }
+    const hasLatitude = Boolean(formData.latitude);
+    const hasLongitude = Boolean(formData.longitude);
+    if (hasLatitude !== hasLongitude) {
+      setFormFeedback('Merci de renseigner les deux champs latitude et longitude.');
+      return;
+    }
+    if (hasLatitude && hasLongitude) {
+      const latitude = Number(formData.latitude);
+      const longitude = Number(formData.longitude);
+      if (Number.isNaN(latitude) || Number.isNaN(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+        setFormFeedback('Coordonnees invalides. Latitude entre -90 et 90, longitude entre -180 et 180.');
+        return;
+      }
+    }
     const payload: DonneesFormulaireSoumission = {
       adresse: formData.adresse.trim(),
       categorie_id: formData.categorie_id,
@@ -196,22 +256,18 @@ export default function OwnerPropertyCreatePage() {
       espaces_exterieurs: splitCsv(formData.espaces_exterieurs),
       accessibilite: splitCsv(formData.accessibilite),
     };
-
     try {
       setIsSubmitting(true);
       const response = await PatrimoineService.createSoumission({ donnees_formulaire: payload });
-
       if (!response.success) {
         setFormFeedback(response.message || 'La soumission a échoué.');
         return;
       }
-
       addNotification({
         type: 'info',
         titre: 'Soumission envoyée',
         message: 'Votre bien a été soumis à l’administration pour validation.',
       });
-
       router.push('/owner/properties');
     } catch (err) {
       console.error('Erreur lors de la soumission du bien:', err);
@@ -411,9 +467,14 @@ export default function OwnerPropertyCreatePage() {
               <input type="url" value={formData.lien_maps} onChange={(e) => handleInputChange('lien_maps', e.target.value)} placeholder="https://maps.google.com/..." className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-zinc-400" />
             </label>
 
-            <button type="submit" disabled={isSubmitting} className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-zinc-900 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60">
-              {isSubmitting ? 'Envoi en cours...' : 'Soumettre à l\'admin'}
-            </button>
+            <div className="flex flex-col gap-2 sm:flex-row sm:gap-4">
+              <button type="submit" disabled={isSubmitting} className="inline-flex h-10 flex-1 items-center justify-center rounded-xl bg-zinc-900 px-4 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60">
+                {isSubmitting ? 'Envoi en cours...' : 'Soumettre à l\'admin'}
+              </button>
+              <button type="button" onClick={handleCreateDirect} disabled={isSubmitting} className="inline-flex h-10 flex-1 items-center justify-center rounded-xl bg-emerald-700 px-4 text-sm font-medium text-white transition-colors hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60">
+                {isSubmitting ? 'Création...' : 'Créer sans soumission'}
+              </button>
+            </div>
             {formFeedback && (
               <p className={`text-sm font-medium ${formFeedback.includes('succès') ? 'text-green-700' : 'text-red-700'}`}>
                 {formFeedback}

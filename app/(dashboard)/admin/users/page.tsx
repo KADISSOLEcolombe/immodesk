@@ -23,6 +23,7 @@ export default function AdminUsersPage() {
 
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [actionUserId, setActionUserId] = useState<string | null>(null);
 
   // Charger la liste des utilisateurs au montage
   useEffect(() => {
@@ -40,7 +41,7 @@ export default function AdminUsersPage() {
           fullName: user.full_name,
           email: user.email,
           role: UserService.mapBackendRoleToFrontend(user.role),
-          active: true, // Par défaut, on considère que les utilisateurs sont actifs
+          active: user.is_active ?? true,
         }));
         setUsers(mappedUsers);
       } else {
@@ -62,10 +63,42 @@ export default function AdminUsersPage() {
     }
   };
 
-  const toggleActive = (id: string) => {
-    setUsers((current) =>
-      current.map((u) => (u.id === id ? { ...u, active: !u.active } : u)),
-    );
+  const toggleActive = async (id: string, active: boolean) => {
+    try {
+      setActionUserId(id);
+
+      const response = active
+        ? await UserService.desactivateUser(id)
+        : await UserService.reactivateUser(id);
+
+      if (!response.success) {
+        addNotification({
+          type: 'alerte',
+          titre: 'Action impossible',
+          message: response.message || 'La mise à jour du statut a échoué.',
+        });
+        return;
+      }
+
+      setUsers((current) =>
+        current.map((u) => (u.id === id ? { ...u, active: !active } : u)),
+      );
+
+      addNotification({
+        type: 'success',
+        titre: active ? 'Utilisateur désactivé' : 'Utilisateur réactivé',
+        message: '',
+      });
+    } catch (error) {
+      console.error('Error toggling user status:', error);
+      addNotification({
+        type: 'alerte',
+        titre: 'Erreur serveur',
+        message: 'Impossible de changer le statut utilisateur.',
+      });
+    } finally {
+      setActionUserId(null);
+    }
   };
 
   const exportUsers = () => {
@@ -148,10 +181,11 @@ export default function AdminUsersPage() {
                   </Link>
                   <button
                     type="button"
-                    onClick={() => toggleActive(user.id)}
+                    onClick={() => toggleActive(user.id, user.active)}
+                    disabled={actionUserId === user.id}
                     className="inline-flex rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100"
                   >
-                    {user.active ? 'Désactiver' : 'Réactiver'}
+                    {actionUserId === user.id ? 'Traitement...' : user.active ? 'Désactiver' : 'Réactiver'}
                   </button>
                 </div>
               </article>

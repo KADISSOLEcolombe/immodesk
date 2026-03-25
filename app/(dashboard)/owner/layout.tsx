@@ -10,6 +10,7 @@ const ownerNav = [
   { href: '/owner', label: 'Vue d\'ensemble', icon: LayoutDashboard, exact: true },
   { href: '/owner/properties', label: 'Mes biens', icon: Building2, exact: false },
   { href: '/owner/payments', label: 'Paiements', icon: CreditCard, exact: false },
+  { href: '/owner/stats', label: 'Statistiques', icon: LayoutDashboard, exact: false },
   // { href: '/owner/reports', label: 'Rapports PDF', icon: FileText, exact: false },
   // { href: '/owner/notifications', label: 'Notifications', icon: Bell, exact: false },
   // { href: '/properties', label: 'Catalogue des biens', icon: Search, exact: false },

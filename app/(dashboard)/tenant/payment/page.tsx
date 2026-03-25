@@ -76,6 +76,7 @@ export default function TenantPaymentPage() {
   const [smsCode, setSmsCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [transactionEnCours, setTransactionEnCours] = useState<TransactionPaiement | null>(null);
+  const [isCancelingTransaction, setIsCancelingTransaction] = useState(false);
   const [paymentInfo, setPaymentInfo] = useState<string | null>(null);
   const [paymentError, setPaymentError] = useState<string | null>(null);
   const [pendingMobileId, setPendingMobileId] = useState<string | null>(null);
@@ -305,6 +306,36 @@ export default function TenantPaymentPage() {
     doc.text(`Moyen: ${transactionEnCours.moyen_paiement}`, 20, 70);
     doc.text(`Mois: ${new Date(transactionEnCours.mois_concerne).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}`, 20, 80);
     doc.save(`recu-paiement-${transactionEnCours.reference}.pdf`);
+  };
+
+  const handleCancelCurrentTransaction = async () => {
+    if (!transactionEnCours || transactionEnCours.statut !== 'en_attente') {
+      return;
+    }
+
+    setIsCancelingTransaction(true);
+    setPaymentError(null);
+    setPaymentInfo(null);
+
+    try {
+      const response = await PaiementEnLigneService.annulerTransaction(transactionEnCours.reference);
+      if (response.success && response.data) {
+        setTransactionEnCours(response.data);
+        setPendingMobileId(null);
+        setPaymentInfo(`Transaction ${response.data.reference} annulée avec succès.`);
+        addNotification({
+          type: 'paiement',
+          titre: 'Transaction annulée',
+          message: response.data.reference,
+        });
+      } else {
+        setPaymentError(response.message || 'Impossible d\'annuler la transaction en cours.');
+      }
+    } catch (err) {
+      setPaymentError('Erreur technique lors de l\'annulation.');
+    } finally {
+      setIsCancelingTransaction(false);
+    }
   };
 
   return (
@@ -539,6 +570,34 @@ export default function TenantPaymentPage() {
                 <div className="flex items-center gap-2 text-red-700 bg-red-50 p-4 rounded-xl border border-red-100 animate-in fade-in">
                   <AlertCircle className="w-5 h-5 shrink-0" />
                   <p className="text-sm font-medium">{paymentError}</p>
+                </div>
+              )}
+
+              {transactionEnCours && (
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Transaction en cours</p>
+                      <p className="text-sm font-semibold text-zinc-900">{transactionEnCours.reference}</p>
+                      <p className="text-xs text-zinc-600">Statut: {transactionEnCours.statut}</p>
+                    </div>
+
+                    {transactionEnCours.statut === 'en_attente' && (
+                      <button
+                        type="button"
+                        onClick={handleCancelCurrentTransaction}
+                        disabled={isCancelingTransaction}
+                        className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isCancelingTransaction ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <AlertCircle className="h-4 w-4" />
+                        )}
+                        Annuler la transaction
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

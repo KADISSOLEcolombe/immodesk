@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Bell,
   Check,
@@ -57,15 +57,19 @@ const formatDate = (dateString: string) => {
 };
 
 export default function TenantNotificationsPage() {
-  const { 
+  const {
     filteredNotifications, 
     filteredUnreadCount, 
     isLoading, 
     refreshNotifications, 
     markAsRead, 
     markAllAsRead,
+    deleteNotification,
+    addNotification,
     userRole 
   } = useNotifications();
+
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Charger les notifications au montage
   useEffect(() => {
@@ -176,6 +180,32 @@ export default function TenantNotificationsPage() {
                             <ExternalLink className="h-4 w-4" />
                           </a>
                         )}
+                        <button
+                          onClick={async () => {
+                            if (deletingId) return;
+                            setDeletingId(item.id);
+                            try {
+                              await deleteNotification(item.id);
+                            } catch {
+                              addNotification({
+                                type: 'alerte',
+                                titre: 'Erreur lors de la suppression',
+                                message: 'Impossible de supprimer la notification. Veuillez réessayer.',
+                              });
+                            } finally {
+                              setDeletingId(null);
+                            }
+                          }}
+                          disabled={deletingId === item.id}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                          title="Supprimer"
+                        >
+                          {deletingId === item.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </button>
                       </div>
                     </div>
                   </div>

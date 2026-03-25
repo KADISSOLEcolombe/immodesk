@@ -8,6 +8,7 @@ import {
   Building2,
   Calendar,
   Check,
+  Edit3,
   Home,
   Info,
   KeyRound,
@@ -20,7 +21,8 @@ import {
 import { normalizeMediaUrl } from '@/lib/utils';
 import { LocationsService } from '@/lib/locations-service';
 import { PatrimoineService } from '@/lib/patrimoine-service';
-import { UserService } from '@/lib/user-service';
+import { UpdateUserData, UserService } from '@/lib/user-service';
+import { useNotifications } from '@/components/notifications/NotificationProvider';
 import { Bail, Bien, Locataire } from '@/types/api';
 
 type UserRole = 'tenant' | 'owner' | 'admin';
@@ -179,6 +181,7 @@ function getAmenities(property: Bien): string[] {
 }
 
 export default function AdminUserDetailPage() {
+  const { addNotification } = useNotifications();
   const params = useParams<{ id: string }>();
   const userId = typeof params?.id === 'string' ? params.id : '';
 
@@ -188,6 +191,13 @@ export default function AdminUserDetailPage() {
   const [tenantRentals, setTenantRentals] = useState<TenantRental[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSubmittingEdit, setIsSubmittingEdit] = useState(false);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editRole, setEditRole] = useState<'locataire' | 'proprietaire' | 'superadmin'>('locataire');
 
   useEffect(() => {
     if (!userId) {
@@ -199,17 +209,13 @@ export default function AdminUserDetailPage() {
         setIsLoading(true);
         setError(null);
 
-        const usersResponse = await UserService.getAllUsers();
-        if (!usersResponse.success || !usersResponse.data) {
-          setError(usersResponse.message || 'Impossible de récupérer cet utilisateur.');
+        const userResponse = await UserService.getUserById(userId);
+        if (!userResponse.success || !userResponse.data) {
+          setError(userResponse.message || 'Impossible de récupérer cet utilisateur.');
           return;
         }
 
-        const rawUser = usersResponse.data.find((entry) => entry.id === userId);
-        if (!rawUser) {
-          setError('Utilisateur introuvable.');
-          return;
-        }
+        const rawUser = userResponse.data;
 
         const mappedRole = UserService.mapBackendRoleToFrontend(rawUser.role);
         const mappedUser: ManagedUserDetail = {
@@ -229,6 +235,10 @@ export default function AdminUserDetailPage() {
         };
 
         setUser(mappedUser);
+        setEditFirstName(rawUser.first_name || '');
+        setEditLastName(rawUser.last_name || '');
+        setEditEmail(rawUser.email || '');
+        setEditRole(rawUser.role);
 
         if (mappedRole === 'owner') {
           const propertiesResponse = await PatrimoineService.getBiens({ proprietaire: mappedUser.id });
@@ -320,6 +330,110 @@ export default function AdminUserDetailPage() {
     return { total, actifs, mensualite };
   }, [tenantRentals]);
 
+  const handleToggleUserStatus = async () => {
+    if (!user) {
+      return;
+    }
+
+    try {
+      setIsUpdatingStatus(true);
+      const response = user.isActive
+        ? await UserService.desactivateUser(user.id)
+        : await UserService.reactivateUser(user.id);
+
+      if (!response.success) {
+        addNotification({
+          type: 'alerte',
+          titre: 'Action impossible',
+          message: response.message || 'La mise à jour du statut a échoué.',
+        });
+        return;
+      }
+
+      setUser((current) => (current ? { ...current, isActive: !current.isActive } : current));
+      addNotification({
+        type: 'success',
+        titre: user.isActive ? 'Utilisateur désactivé' : 'Utilisateur réactivé',
+        message: '',
+      });
+    } catch (err) {
+      console.error('Erreur changement statut utilisateur:', err);
+      addNotification({
+        type: 'alerte',
+        titre: 'Erreur serveur',
+        message: 'Impossible de changer le statut du compte.',
+      });
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleSaveUser = async () => {
+    if (!user) {
+      return;
+    }
+
+    const payload: UpdateUserData = {
+      first_name: editFirstName.trim(),
+      last_name: editLastName.trim(),
+      email: editEmail.trim().toLowerCase(),
+      role: editRole,
+    };
+
+    try {
+      setIsSubmittingEdit(true);
+      const response = await UserService.updateUser(user.id, payload);
+
+      if (!response.success || !response.data) {
+        addNotification({
+          type: 'alerte',
+          titre: 'Échec de la mise à jour',
+          message: response.message || 'Impossible de modifier cet utilisateur.',
+        });
+        return;
+      }
+
+      const updated = response.data;
+      const mappedRole = UserService.mapBackendRoleToFrontend(updated.role);
+
+      setUser((current) =>
+        current
+          ? {
+              ...current,
+              firstName: updated.first_name,
+              lastName: updated.last_name,
+              fullName: updated.full_name,
+              email: updated.email,
+              role: mappedRole,
+              backendRole: updated.role,
+              roleLabel: getRoleLabel(mappedRole),
+            }
+          : current,
+      );
+
+      setEditFirstName(updated.first_name || '');
+      setEditLastName(updated.last_name || '');
+      setEditEmail(updated.email || '');
+      setEditRole(updated.role);
+      setIsEditing(false);
+
+      addNotification({
+        type: 'success',
+        titre: 'Utilisateur mis à jour',
+        message: '',
+      });
+    } catch (err) {
+      console.error('Erreur mise à jour utilisateur:', err);
+      addNotification({
+        type: 'alerte',
+        titre: 'Erreur serveur',
+        message: 'Impossible de modifier cet utilisateur.',
+      });
+    } finally {
+      setIsSubmittingEdit(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="rounded-2xl border border-black/5 bg-white p-10 text-center shadow-sm">
@@ -359,7 +473,88 @@ export default function AdminUserDetailPage() {
         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${user.isActive ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-rose-50 text-rose-700 ring-rose-200'}`}>
           {user.isActive ? 'Compte actif' : 'Compte inactif'}
         </span>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsEditing((current) => !current)}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100"
+          >
+            <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
+            {isEditing ? 'Fermer édition' : 'Modifier'}
+          </button>
+          <button
+            type="button"
+            onClick={handleToggleUserStatus}
+            disabled={isUpdatingStatus}
+            className="inline-flex rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-60"
+          >
+            {isUpdatingStatus ? 'Traitement...' : user.isActive ? 'Désactiver' : 'Réactiver'}
+          </button>
+        </div>
       </div>
+
+      {isEditing && (
+        <section className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
+          <h2 className="text-base font-semibold text-zinc-900">Modifier le compte</h2>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <label className="text-xs font-medium text-zinc-600">
+              Prénom
+              <input
+                value={editFirstName}
+                onChange={(event) => setEditFirstName(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
+              />
+            </label>
+            <label className="text-xs font-medium text-zinc-600">
+              Nom
+              <input
+                value={editLastName}
+                onChange={(event) => setEditLastName(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
+              />
+            </label>
+            <label className="text-xs font-medium text-zinc-600 sm:col-span-2">
+              Email
+              <input
+                type="email"
+                value={editEmail}
+                onChange={(event) => setEditEmail(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
+              />
+            </label>
+            <label className="text-xs font-medium text-zinc-600 sm:col-span-2">
+              Rôle backend
+              <select
+                value={editRole}
+                onChange={(event) => setEditRole(event.target.value as 'locataire' | 'proprietaire' | 'superadmin')}
+                className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
+              >
+                <option value="locataire">locataire</option>
+                <option value="proprietaire">proprietaire</option>
+                <option value="superadmin">superadmin</option>
+              </select>
+            </label>
+          </div>
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setIsEditing(false)}
+              className="inline-flex rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100"
+            >
+              Annuler
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveUser}
+              disabled={isSubmittingEdit}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-zinc-700 disabled:opacity-60"
+            >
+              {isSubmittingEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Check className="h-3.5 w-3.5" aria-hidden="true" />}
+              {isSubmittingEdit ? 'Enregistrement...' : 'Enregistrer'}
+            </button>
+          </div>
+        </section>
+      )}
 
       <article className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

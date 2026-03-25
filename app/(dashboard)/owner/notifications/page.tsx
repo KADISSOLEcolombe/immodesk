@@ -15,7 +15,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
-import { NotificationsService, Notification } from '@/lib/notifications-service';
+import { NotificationsService } from '@/lib/notifications-service';
 
 const typeConfig: Record<
   string,
@@ -57,6 +57,7 @@ export default function OwnerNotificationsPage() {
     refreshNotifications,
     markAsRead,
     markAllAsRead,
+    deleteNotification,
   } = useNotifications();
 
   const [adminMessage, setAdminMessage] = useState('');
@@ -73,12 +74,7 @@ export default function OwnerNotificationsPage() {
     setDeletingId(id);
     setError(null);
     try {
-      const response = await NotificationsService.deleteNotification(id);
-      if (response.success) {
-        await refreshNotifications();
-      } else {
-        setError('Erreur lors de la suppression');
-      }
+      await deleteNotification(id);
     } catch {
       setError('Erreur lors de la suppression');
     } finally {

@@ -75,7 +75,37 @@ export interface AdminGlobalStats {
   soumissions: AdminSubmissionStats;
 }
 
+export interface AdminMonthlyPaymentTrendPoint {
+  mois: string;
+  valides: number;
+  enAttente: number;
+  echoues: number;
+}
+
 export class StatsService {
+  private static readonly monthFormatter = new Intl.DateTimeFormat('fr-FR', {
+    month: 'short',
+  });
+
+  private static toIsoDate(date: Date): string {
+    return date.toISOString().slice(0, 10);
+  }
+
+  private static getMonthBounds(date: Date): { start: Date; end: Date } {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    return {
+      start: new Date(year, month, 1),
+      end: new Date(year, month + 1, 0),
+    };
+  }
+
+  private static formatShortMonth(date: Date): string {
+    const raw = this.monthFormatter.format(date);
+    const normalized = raw.replace('.', '').trim();
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  }
+
   private static buildFallbackError<T>(message: string): StandardApiResponse<T> {
     return {
       success: false,
@@ -200,6 +230,59 @@ export class StatsService {
 
   static async getAdminSubmissionStats(): Promise<StandardApiResponse<AdminSubmissionStats>> {
     return apiClient.get<AdminSubmissionStats>('/stats/admin/soumissions/');
+  }
+
+  static async getAdminMonthlyPaymentTrend(
+    months: number = 6
+  ): Promise<StandardApiResponse<AdminMonthlyPaymentTrendPoint[]>> {
+    const safeMonths = Number.isFinite(months) && months > 0 ? Math.floor(months) : 6;
+    const currentMonthStart = new Date();
+    currentMonthStart.setDate(1);
+    currentMonthStart.setHours(0, 0, 0, 0);
+
+    const monthStarts = Array.from({ length: safeMonths }, (_, index) => {
+      const monthDate = new Date(currentMonthStart);
+      monthDate.setMonth(currentMonthStart.getMonth() - (safeMonths - 1 - index));
+      return monthDate;
+    });
+
+    const responses = await Promise.all(
+      monthStarts.map(async (monthStart) => {
+        const { start, end } = this.getMonthBounds(monthStart);
+        const response = await this.getAdminPaymentStats({
+          date_debut: this.toIsoDate(start),
+          date_fin: this.toIsoDate(end),
+        });
+
+        return {
+          monthStart,
+          response,
+        };
+      })
+    );
+
+    const hasSuccess = responses.some(({ response }) => response.success && response.data);
+    if (!hasSuccess) {
+      return this.buildFallbackError<AdminMonthlyPaymentTrendPoint[]>('Aucune tendance mensuelle disponible.');
+    }
+
+    const data: AdminMonthlyPaymentTrendPoint[] = responses.map(({ monthStart, response }) => ({
+      mois: this.formatShortMonth(monthStart),
+      valides: response.success && response.data ? response.data.valide : 0,
+      enAttente: response.success && response.data ? response.data.en_attente : 0,
+      echoues: response.success && response.data ? response.data.echoue : 0,
+    }));
+
+    return {
+      success: true,
+      code: 'OPERATION_SUCCESS',
+      message: 'Tendance mensuelle des paiements récupérée.',
+      messageKey: 'operation.success',
+      data,
+      timestamp: new Date().toISOString(),
+      errors: null,
+      pagination: null,
+    };
   }
 
   // Performance par immeuble

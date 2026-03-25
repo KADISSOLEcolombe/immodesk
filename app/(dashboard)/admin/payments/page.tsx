@@ -4,7 +4,8 @@ import { useMemo, useState, useEffect } from 'react';
 import { CreditCard, Loader2, AlertCircle } from 'lucide-react';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
 import { ComptabiliteService } from '@/lib/comptabilite-service';
-import { Paiement, StatutPaiement } from '@/types/api';
+import { PaiementEnLigneService } from '@/lib/paiement-en-ligne-service';
+import { ConfigSimulateur, Paiement, StatutPaiement } from '@/types/api';
 
 type PaymentStatusUI = 'pending' | 'success' | 'failed' | 'refunded' | 'canceled';
 
@@ -59,6 +60,18 @@ const mapUIStatusToBackend = (status: PaymentStatusUI): StatutPaiement => {
   return mapping[status] || 'en_retard';
 };
 
+const mapStatusLabel = (status: PaymentStatusUI): string => {
+  const labels: Record<PaymentStatusUI, string> = {
+    pending: 'En retard',
+    success: 'Paye',
+    failed: 'Impaye',
+    refunded: 'Rembourse',
+    canceled: 'Annule',
+  };
+
+  return labels[status];
+};
+
 // Map backend source to UI channel
 const mapBackendSource = (source: string): 'mobile_money' | 'card' | 'manual' => {
   if (source === 'manuel') return 'manual';
@@ -102,10 +115,17 @@ export default function AdminPaymentsPage() {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<'all' | PaymentStatusUI>('all');
   const [paymentTypeFilter, setPaymentTypeFilter] = useState<'all' | 'mobile_money' | 'card' | 'manual'>('all');
   const [updateLoading, setUpdateLoading] = useState<string | null>(null);
+  const [nextStatusByPayment, setNextStatusByPayment] = useState<Record<string, PaymentStatusUI>>({});
+  const [configs, setConfigs] = useState<ConfigSimulateur[]>([]);
+  const [configsDraft, setConfigsDraft] = useState<Record<string, { taux_succes: number; delai_secondes: number }>>({});
+  const [isLoadingConfigs, setIsLoadingConfigs] = useState(false);
+  const [isSavingConfigFor, setIsSavingConfigFor] = useState<string | null>(null);
+  const [forceReference, setForceReference] = useState('');
+  const [forceActionLoading, setForceActionLoading] = useState<'success' | 'failed' | null>(null);
 
   // Issues state (kept for UI compatibility)
   const [paymentIssues, setPaymentIssues] = useState<PaymentIssue[]>(initialPaymentIssues);
-  const [activeTab, setActiveTab] = useState<'global' | 'issues' | 'audit'>('global');
+  const [activeTab, setActiveTab] = useState<'global' | 'simulateur' | 'issues' | 'audit'>('global');
 
   // Fetch payments from API
   const fetchPayments = async () => {
@@ -123,6 +143,12 @@ export default function AdminPaymentsPage() {
           filtered = filtered.filter(p => p.channel === paymentTypeFilter);
         }
         setPayments(filtered);
+        setNextStatusByPayment(
+          filtered.reduce<Record<string, PaymentStatusUI>>((acc, payment) => {
+            acc[payment.id] = payment.status;
+            return acc;
+          }, {}),
+        );
         setPagination(response.pagination || {
           current_page: 1,
           total_pages: 1,
@@ -148,14 +174,49 @@ export default function AdminPaymentsPage() {
     fetchPayments();
   }, [paymentStatusFilter, paymentTypeFilter]);
 
-  const intervenePayment = async (paymentId: string, nextStatus: PaymentStatusUI) => {
+  const fetchSimulateurConfig = async () => {
+    setIsLoadingConfigs(true);
+    try {
+      const response = await PaiementEnLigneService.getConfigSimulateur();
+      if (!response.success || !response.data) {
+        addNotification({ type: 'alerte', titre: response.message || 'Impossible de charger la configuration simulateur', message: '' });
+        return;
+      }
+
+      setConfigs(response.data);
+      setConfigsDraft(
+        response.data.reduce<Record<string, { taux_succes: number; delai_secondes: number }>>((acc, item) => {
+          acc[item.moyen_paiement] = {
+            taux_succes: Number(item.taux_succes),
+            delai_secondes: Number(item.delai_secondes),
+          };
+          return acc;
+        }, {}),
+      );
+    } catch (err) {
+      addNotification({ type: 'alerte', titre: 'Erreur serveur simulateur', message: '' });
+    } finally {
+      setIsLoadingConfigs(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'simulateur') {
+      fetchSimulateurConfig();
+    }
+  }, [activeTab]);
+
+  const intervenePayment = async (paymentId: string) => {
+    const nextStatus = nextStatusByPayment[paymentId];
+    if (!nextStatus) {
+      return;
+    }
+
     setUpdateLoading(paymentId);
     try {
-      const response = await ComptabiliteService.updatePaiement(paymentId, {
-        statut: mapUIStatusToBackend(nextStatus),
-      });
+      const response = await ComptabiliteService.updatePaiementStatut(paymentId, mapUIStatusToBackend(nextStatus));
       if (response.success) {
-        addNotification({ type: 'paiement', titre: `Paiement ${paymentId} mis à jour: ${nextStatus}`, message: '' });
+        addNotification({ type: 'paiement', titre: `Paiement ${paymentId} mis à jour: ${mapStatusLabel(nextStatus)}`, message: '' });
         // Update local state
         setPayments(prev => prev.map(p => 
           p.id === paymentId ? { ...p, status: nextStatus } : p
@@ -174,6 +235,78 @@ export default function AdminPaymentsPage() {
     const target = paymentIssues.find((i) => i.id === id);
     setPaymentIssues((c) => c.map((i) => (i.id === id ? { ...i, status: 'resolved' } : i)));
     if (target) addNotification({ type: 'paiement', titre: `Incident paiement résolu: ${target.propertyTitle}.`, message: '' });
+  };
+
+  const saveOneConfig = async (moyenPaiement: string) => {
+    const draft = configsDraft[moyenPaiement];
+    if (!draft) {
+      return;
+    }
+
+    if (draft.taux_succes < 0 || draft.taux_succes > 100 || draft.delai_secondes < 0) {
+      addNotification({ type: 'alerte', titre: 'Valeurs invalides', message: 'Le taux doit etre entre 0 et 100 et le delai >= 0.' });
+      return;
+    }
+
+    setIsSavingConfigFor(moyenPaiement);
+    try {
+      const response = await PaiementEnLigneService.updateConfigSimulateur({
+        moyen_paiement: moyenPaiement as 'mixx_by_yas' | 'moov_money' | 'carte_bancaire',
+        taux_succes: draft.taux_succes,
+        delai_secondes: draft.delai_secondes,
+      });
+
+      if (!response.success || !response.data) {
+        addNotification({ type: 'alerte', titre: response.message || 'Echec mise a jour simulateur', message: '' });
+        return;
+      }
+
+      setConfigs((current) =>
+        current.map((item) =>
+          item.moyen_paiement === response.data?.moyen_paiement
+            ? { ...item, taux_succes: response.data.taux_succes, delai_secondes: response.data.delai_secondes }
+            : item,
+        ),
+      );
+
+      addNotification({ type: 'info', titre: `Configuration ${moyenPaiement} mise a jour`, message: '' });
+    } catch (err) {
+      addNotification({ type: 'alerte', titre: 'Erreur serveur', message: 'Impossible de sauvegarder la configuration.' });
+    } finally {
+      setIsSavingConfigFor(null);
+    }
+  };
+
+  const forceTransaction = async (mode: 'success' | 'failed') => {
+    const reference = forceReference.trim();
+    if (!reference) {
+      addNotification({ type: 'alerte', titre: 'Reference requise', message: 'Saisis une reference transaction.' });
+      return;
+    }
+
+    setForceActionLoading(mode);
+    try {
+      const response = mode === 'success'
+        ? await PaiementEnLigneService.forcerSucces(reference)
+        : await PaiementEnLigneService.forcerEchec(reference);
+
+      if (!response.success) {
+        addNotification({ type: 'alerte', titre: response.message || 'Operation refusee', message: '' });
+        return;
+      }
+
+      addNotification({
+        type: 'paiement',
+        titre: mode === 'success' ? 'Transaction forcee en succes' : 'Transaction forcee en echec',
+        message: reference,
+      });
+
+      fetchPayments();
+    } catch (err) {
+      addNotification({ type: 'alerte', titre: 'Erreur serveur', message: 'Impossible de forcer la transaction.' });
+    } finally {
+      setForceActionLoading(null);
+    }
   };
 
   // Export to CSV
@@ -203,6 +336,7 @@ export default function AdminPaymentsPage() {
 
   const tabs = [
     { id: 'global', label: 'Vue globale' },
+    { id: 'simulateur', label: 'Simulateur' },
     { id: 'issues', label: 'Incidents' },
     { id: 'audit', label: 'Audit log' },
   ] as const;
@@ -325,21 +459,27 @@ export default function AdminPaymentsPage() {
                       </p>
                     </div>
                     <div className="flex gap-2">
+                      <select
+                        value={nextStatusByPayment[payment.id] || payment.status}
+                        onChange={(event) =>
+                          setNextStatusByPayment((current) => ({
+                            ...current,
+                            [payment.id]: event.target.value as PaymentStatusUI,
+                          }))
+                        }
+                        className="h-8 rounded-lg border border-zinc-200 bg-white px-2 text-xs text-zinc-900"
+                      >
+                        <option value="success">Paye</option>
+                        <option value="pending">En retard</option>
+                        <option value="failed">Impaye</option>
+                      </select>
                       <button
                         type="button"
                         disabled={updateLoading === payment.id}
-                        onClick={() => intervenePayment(payment.id, 'success')}
+                        onClick={() => intervenePayment(payment.id)}
                         className="inline-flex rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50"
                       >
-                        {updateLoading === payment.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Forcer réussi'}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={updateLoading === payment.id}
-                        onClick={() => intervenePayment(payment.id, 'failed')}
-                        className="inline-flex rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50"
-                      >
-                        Forcer échec
+                        {updateLoading === payment.id ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Appliquer statut'}
                       </button>
                     </div>
                   </div>
@@ -355,6 +495,116 @@ export default function AdminPaymentsPage() {
               <span>Page {pagination.current_page} / {pagination.total_pages}</span>
             </div>
           )}
+        </section>
+      )}
+
+      {activeTab === 'simulateur' && (
+        <section className="space-y-4 rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
+          <div>
+            <h2 className="text-base font-semibold text-zinc-900">Configuration du simulateur</h2>
+            <p className="mt-1 text-sm text-zinc-500">Ajuste taux de succes et delai par moyen de paiement.</p>
+          </div>
+
+          {isLoadingConfigs ? (
+            <div className="flex items-center justify-center py-10">
+              <Loader2 className="h-7 w-7 animate-spin text-zinc-400" />
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {configs.map((config) => {
+                const draft = configsDraft[config.moyen_paiement] || {
+                  taux_succes: Number(config.taux_succes),
+                  delai_secondes: Number(config.delai_secondes),
+                };
+
+                return (
+                  <article key={config.id} className="rounded-xl border border-zinc-100 bg-zinc-50 p-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-4 sm:items-end">
+                      <div>
+                        <p className="text-xs text-zinc-500">Moyen</p>
+                        <p className="text-sm font-medium text-zinc-900">{config.moyen_paiement}</p>
+                      </div>
+                      <label className="text-xs text-zinc-500">
+                        Taux succes (%)
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={draft.taux_succes}
+                          onChange={(event) =>
+                            setConfigsDraft((current) => ({
+                              ...current,
+                              [config.moyen_paiement]: {
+                                ...draft,
+                                taux_succes: Number(event.target.value),
+                              },
+                            }))
+                          }
+                          className="mt-1 h-9 w-full rounded-lg border border-zinc-200 bg-white px-2 text-sm text-zinc-900"
+                        />
+                      </label>
+                      <label className="text-xs text-zinc-500">
+                        Delai (secondes)
+                        <input
+                          type="number"
+                          min={0}
+                          value={draft.delai_secondes}
+                          onChange={(event) =>
+                            setConfigsDraft((current) => ({
+                              ...current,
+                              [config.moyen_paiement]: {
+                                ...draft,
+                                delai_secondes: Number(event.target.value),
+                              },
+                            }))
+                          }
+                          className="mt-1 h-9 w-full rounded-lg border border-zinc-200 bg-white px-2 text-sm text-zinc-900"
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        disabled={isSavingConfigFor === config.moyen_paiement}
+                        onClick={() => saveOneConfig(config.moyen_paiement)}
+                        className="inline-flex h-9 items-center justify-center rounded-lg border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50"
+                      >
+                        {isSavingConfigFor === config.moyen_paiement ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Sauvegarder'}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-xs text-zinc-500">Statut simulateur: {config.actif ? 'Actif' : 'Desactive'}</p>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+            <h3 className="text-sm font-semibold text-zinc-900">Forcer succes/echec</h3>
+            <p className="mt-1 text-xs text-zinc-500">Action de debug sur transaction en_attente (reference exacte).</p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <input
+                value={forceReference}
+                onChange={(event) => setForceReference(event.target.value)}
+                placeholder="Ex: IMD-2026-0001"
+                className="h-10 flex-1 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900"
+              />
+              <button
+                type="button"
+                disabled={forceActionLoading !== null}
+                onClick={() => forceTransaction('success')}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50"
+              >
+                {forceActionLoading === 'success' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Forcer succes'}
+              </button>
+              <button
+                type="button"
+                disabled={forceActionLoading !== null}
+                onClick={() => forceTransaction('failed')}
+                className="inline-flex h-10 items-center justify-center rounded-xl border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50"
+              >
+                {forceActionLoading === 'failed' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Forcer echec'}
+              </button>
+            </div>
+          </div>
         </section>
       )}
 

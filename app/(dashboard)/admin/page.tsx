@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
 import { AdminOverviewCharts } from '../../../components/dashboard/admin-overview-charts';
-import { StatsService, AdminGlobalStats } from '@/lib/stats-service';
+import { StatsService, AdminGlobalStats, AdminMonthlyPaymentTrendPoint } from '@/lib/stats-service';
 
 const currencyFormatter = new Intl.NumberFormat('fr-TG', {
   style: 'currency',
@@ -15,6 +15,7 @@ const currencyFormatter = new Intl.NumberFormat('fr-TG', {
 export default function AdminOverviewPage() {
   const { unreadCount } = useNotifications();
   const [globalStats, setGlobalStats] = useState<AdminGlobalStats | null>(null);
+  const [monthlyTrend, setMonthlyTrend] = useState<AdminMonthlyPaymentTrendPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,11 +24,21 @@ export default function AdminOverviewPage() {
       try {
         setIsLoading(true);
         setError(null);
-        const response = await StatsService.getAdminGlobalStats();
-        if (response.success && response.data) {
-          setGlobalStats(response.data);
+        const [globalResponse, trendResponse] = await Promise.all([
+          StatsService.getAdminGlobalStats(),
+          StatsService.getAdminMonthlyPaymentTrend(6),
+        ]);
+
+        if (globalResponse.success && globalResponse.data) {
+          setGlobalStats(globalResponse.data);
         } else {
-          setError(response.message || 'Impossible de charger les statistiques admin');
+          setError(globalResponse.message || 'Impossible de charger les statistiques admin');
+        }
+
+        if (trendResponse.success && trendResponse.data) {
+          setMonthlyTrend(trendResponse.data);
+        } else {
+          setMonthlyTrend([]);
         }
       } catch (err) {
         console.error('Erreur chargement stats admin:', err);
@@ -129,7 +140,7 @@ export default function AdminOverviewPage() {
         </article>
       </section>
 
-      <AdminOverviewCharts />
+      <AdminOverviewCharts globalStats={globalStats} monthlyTrend={monthlyTrend} />
     </>
   );
 }

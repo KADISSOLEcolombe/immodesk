@@ -1,5 +1,5 @@
 import { apiClient, StandardApiResponse } from '@/lib/api-client';
-import { User, RegisterData, UserRole } from '@/types/api';
+import { UserRole } from '@/types/api';
 
 // Type pour la création d'utilisateur avec les champs complets du backend
 export interface CreateUserData {
@@ -27,6 +27,15 @@ export interface UserResponse {
   is_active?: boolean;
 }
 
+export interface UpdateUserData {
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+  role?: UserRole;
+  canal_2fa?: 'mail' | 'sms';
+  phone_number?: string;
+}
+
 export class UserService {
   // Lister tous les utilisateurs (Super Admin uniquement)
   static async getAllUsers(): Promise<StandardApiResponse<UserResponse[]>> {
@@ -38,12 +47,52 @@ export class UserService {
     }
   }
 
+  // Récupérer un utilisateur par son ID (Super Admin uniquement)
+  static async getUserById(userId: string): Promise<StandardApiResponse<UserResponse>> {
+    try {
+      return await apiClient.get<UserResponse>(`/auth/users/${userId}/`);
+    } catch (error) {
+      console.error('Get user by id error:', error);
+      throw error;
+    }
+  }
+
   // Créer un utilisateur (Super Admin uniquement)
   static async createUser(data: CreateUserData): Promise<StandardApiResponse<{ message: string }>> {
     try {
       return await apiClient.post<{ message: string }>('/auth/register/', data);
     } catch (error) {
       console.error('Create user error:', error);
+      throw error;
+    }
+  }
+
+  // Modifier un utilisateur (Super Admin uniquement)
+  static async updateUser(userId: string, data: UpdateUserData): Promise<StandardApiResponse<UserResponse>> {
+    try {
+      return await apiClient.put<UserResponse>(`/auth/users/${userId}/modifier/`, data);
+    } catch (error) {
+      console.error('Update user error:', error);
+      throw error;
+    }
+  }
+
+  // Désactiver un utilisateur (Super Admin uniquement)
+  static async desactivateUser(userId: string): Promise<StandardApiResponse<{ message: string }>> {
+    try {
+      return await apiClient.post<{ message: string }>(`/auth/users/${userId}/desactiver/`);
+    } catch (error) {
+      console.error('Desactivate user error:', error);
+      throw error;
+    }
+  }
+
+  // Réactiver un utilisateur (Super Admin uniquement)
+  static async reactivateUser(userId: string): Promise<StandardApiResponse<{ message: string }>> {
+    try {
+      return await apiClient.post<{ message: string }>(`/auth/users/${userId}/reactiver/`);
+    } catch (error) {
+      console.error('Reactivate user error:', error);
       throw error;
     }
   }
