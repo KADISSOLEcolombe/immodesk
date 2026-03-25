@@ -1,8 +1,9 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { Building2, Loader2, Pencil, PlusCircle, Trash2, X } from 'lucide-react';
-import { Immeuble } from '@/types/api';
+import { Building2, Eye, Loader2, Pencil, PlusCircle, Trash2, X } from 'lucide-react';
+import { Bien, Immeuble } from '@/types/api';
+import { useNotifications } from '@/components/notifications/NotificationProvider';
 import { PatrimoineService } from '@/lib/patrimoine-service';
 import { UserResponse, UserService } from '@/lib/user-service';
 
@@ -12,6 +13,7 @@ type BuildingForm = {
   adresse: string;
   description: string;
   lien_maps: string;
+  type_logement: string;
 };
 
 const INITIAL_FORM: BuildingForm = {
@@ -20,9 +22,11 @@ const INITIAL_FORM: BuildingForm = {
   adresse: '',
   description: '',
   lien_maps: '',
+  type_logement: 'studio',
 };
 
 export default function AdminBuildingsPage() {
+  const { addNotification } = useNotifications();
   const [buildings, setBuildings] = useState<Immeuble[]>([]);
   const [owners, setOwners] = useState<UserResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,7 +38,9 @@ export default function AdminBuildingsPage() {
   const [formState, setFormState] = useState<BuildingForm>(INITIAL_FORM);
 
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState('');
+  const [biensPanelId, setBiensPanelId] = useState<string | null>(null);
+  const [biensPanelData, setBiensPanelData] = useState<Bien[]>([]);
+  const [biensPanelLoading, setBiensPanelLoading] = useState(false);
 
   const sortedBuildings = useMemo(
     () => [...buildings].sort((a, b) => a.nom.localeCompare(b.nom, 'fr', { sensitivity: 'base' })),
@@ -43,7 +49,6 @@ export default function AdminBuildingsPage() {
 
   const clearMessages = () => {
     setError(null);
-    setSuccessMessage('');
   };
 
   const loadBuildings = async () => {
@@ -96,6 +101,7 @@ export default function AdminBuildingsPage() {
   };
 
   const openCreateModal = () => {
+    console.log('openCreateModal appelé');
     clearMessages();
     resetForm();
     setIsModalOpen(true);
@@ -118,10 +124,11 @@ export default function AdminBuildingsPage() {
         adresse: item.adresse || '',
         description: item.description || '',
         lien_maps: item.lien_maps || '',
+        type_logement: item.type_logement || 'studio',
       });
       setIsModalOpen(true);
     } catch (err) {
-      setError('Erreur technique lors du chargement.');
+      addNotification({ type: 'alerte', titre: 'Erreur technique lors du chargement.', message: '' });
     }
   };
 
@@ -130,7 +137,7 @@ export default function AdminBuildingsPage() {
     clearMessages();
 
     if (!formState.proprietaire || !formState.nom.trim() || !formState.adresse.trim()) {
-      setError('Proprietaire, nom et adresse sont obligatoires.');
+      addNotification({ type: 'alerte', titre: 'Propriétaire, nom et adresse sont obligatoires.', message: '' });
       return;
     }
 
@@ -138,27 +145,42 @@ export default function AdminBuildingsPage() {
       proprietaire: formState.proprietaire,
       nom: formState.nom.trim(),
       adresse: formState.adresse.trim(),
-      description: formState.description.trim(),
-      lien_maps: formState.lien_maps.trim(),
+      description: formState.description.trim() || '',
+      lien_maps: formState.lien_maps.trim() || '',
+      type_logement: (formState.type_logement || 'studio') as Immeuble['type_logement'],
+      latitude: null,
+      longitude: null,
+      nombre_etages: null,
+      annee_construction: null,
     };
 
     try {
       setIsSubmitting(true);
+      console.log('Payload envoyé à l\'API:', payload);
       const response = editingId
         ? await PatrimoineService.updateImmeuble(editingId, payload)
         : await PatrimoineService.createImmeuble(payload);
 
       if (!response.success) {
-        setError(response.message || 'Sauvegarde impossible.');
+        console.error('Erreur API complète:', response);
+        const errorDetails = response.errors && response.errors.length > 0 
+          ? response.errors.map(e => e.message).join(', ')
+          : '';
+        addNotification({ 
+          type: 'alerte', 
+          titre: response.message || 'Sauvegarde impossible.', 
+          message: errorDetails || ''
+        });
         return;
       }
 
-      setSuccessMessage(editingId ? 'Immeuble mis a jour avec succes.' : 'Immeuble cree avec succes.');
+      const label = editingId ? 'Immeuble mis à jour avec succès.' : 'Immeuble créé avec succès.';
       closeModal();
       await loadBuildings();
+      addNotification({ type: 'info', titre: label, message: '' });
     } catch (err) {
       console.error('Erreur sauvegarde immeuble admin:', err);
-      setError('Erreur technique lors de la sauvegarde.');
+      addNotification({ type: 'alerte', titre: 'Erreur technique lors de la sauvegarde.', message: '' });
     } finally {
       setIsSubmitting(false);
     }
@@ -175,17 +197,33 @@ export default function AdminBuildingsPage() {
       setDeletingId(item.id);
       const response = await PatrimoineService.deleteImmeuble(item.id);
       if (!response.success) {
-        setError(response.message || 'Suppression impossible.');
+        addNotification({ type: 'alerte', titre: response.message || 'Suppression impossible.', message: '' });
         return;
       }
 
-      setSuccessMessage('Immeuble supprime avec succes.');
+      addNotification({ type: 'info', titre: 'Immeuble supprimé avec succès.', message: '' });
       await loadBuildings();
     } catch (err) {
       console.error('Erreur suppression immeuble admin:', err);
-      setError('Erreur technique lors de la suppression.');
+      addNotification({ type: 'alerte', titre: 'Erreur technique lors de la suppression.', message: '' });
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const openBiensPanel = async (immeubleId: string) => {
+    setBiensPanelId(immeubleId);
+    setBiensPanelData([]);
+    setBiensPanelLoading(true);
+    try {
+      const response = await PatrimoineService.getImmeubleBiens(immeubleId);
+      if (response.success && response.data) {
+        setBiensPanelData(response.data);
+      }
+    } catch (err) {
+      addNotification({ type: 'alerte', titre: 'Impossible de charger les biens de cet immeuble.', message: '' });
+    } finally {
+      setBiensPanelLoading(false);
     }
   };
 
@@ -215,10 +253,9 @@ export default function AdminBuildingsPage() {
         </button>
       </div>
 
-      {(error || successMessage) && (
-        <div className="rounded-xl border border-zinc-200 bg-white p-4">
-          {error && <p className="text-sm font-medium text-red-700">{error}</p>}
-          {successMessage && <p className="text-sm font-medium text-green-700">{successMessage}</p>}
+      {error && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+          <p className="text-sm font-medium text-red-700">{error}</p>
         </div>
       )}
 
@@ -242,7 +279,15 @@ export default function AdminBuildingsPage() {
                     <p className="mt-1 text-xs text-zinc-500">Proprietaire: {resolveOwnerLabel(building.proprietaire)}</p>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openBiensPanel(building.id)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100"
+                    >
+                      <Eye className="h-3.5 w-3.5" aria-hidden="true" />
+                      Voir les biens
+                    </button>
                     <button
                       type="button"
                       onClick={() => openEditModal(building.id)}
@@ -268,12 +313,52 @@ export default function AdminBuildingsPage() {
         )}
       </article>
 
+      {biensPanelId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-base font-semibold text-zinc-900">
+                Biens de l&apos;immeuble ({biensPanelData.length})
+              </h2>
+              <button
+                type="button"
+                onClick={() => { setBiensPanelId(null); setBiensPanelData([]); }}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 text-zinc-600 hover:bg-zinc-100"
+              >
+                <X className="h-4 w-4" aria-hidden="true" />
+              </button>
+            </div>
+            {biensPanelLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-zinc-500" />
+              </div>
+            ) : biensPanelData.length === 0 ? (
+              <p className="py-6 text-center text-sm text-zinc-500">Aucun bien dans cet immeuble.</p>
+            ) : (
+              <div className="max-h-[60vh] space-y-2 overflow-y-auto">
+                {biensPanelData.map((bien) => (
+                  <div key={bien.id} className="flex items-center justify-between rounded-xl border border-zinc-100 bg-zinc-50 px-4 py-3">
+                    <div>
+                      <p className="text-sm font-medium text-zinc-900">{bien.titre || `Bien ${bien.id.slice(0, 8)}`}</p>
+                      <p className="text-xs text-zinc-500">{bien.adresse || bien.adresse_complete || 'Adresse non disponible'}</p>
+                    </div>
+                    <span className="inline-flex rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-700">
+                      {bien.statut}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
           <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold text-zinc-900">
-                {editingId ? 'Modifier immeuble' : 'Creer immeuble'}
+                {editingId ? 'Modifier immeuble' : 'Créer immeuble'}
               </h2>
               <button
                 type="button"
@@ -330,6 +415,24 @@ export default function AdminBuildingsPage() {
                   onChange={(event) => setFormState((current) => ({ ...current, description: event.target.value }))}
                   className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
                 />
+              </label>
+
+              <label className="flex flex-col gap-1.5 text-xs font-medium text-zinc-600">
+                Type de logement
+                <select
+                  value={formState.type_logement}
+                  onChange={(event) => setFormState((current) => ({ ...current, type_logement: event.target.value }))}
+                  className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900"
+                >
+                  <option value="studio">Studio</option>
+                  <option value="t1">T1</option>
+                  <option value="t2">T2</option>
+                  <option value="t3">T3</option>
+                  <option value="t4">T4</option>
+                  <option value="house">Maison</option>
+                  <option value="villa">Villa</option>
+                  <option value="commercial">Commercial</option>
+                </select>
               </label>
 
               <label className="flex flex-col gap-1.5 text-xs font-medium text-zinc-600">

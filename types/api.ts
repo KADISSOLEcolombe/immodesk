@@ -37,7 +37,7 @@ export interface Categorie {
 }
 
 export type TypeLogement = 'studio' | 't1' | 't2' | 't3' | 't4' | 'house' | 'villa' | 'commercial';
-export type StatutBien = 'vacant' | 'loue' | 'maintenance' | 'reservation';
+export type StatutBien = 'vacant' | 'loue' | 'maintenance' | 'en_travaux' | 'reservation';
 
 export interface Immeuble {
   id: string;

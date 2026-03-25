@@ -1,7 +1,7 @@
 "use client";
 
-import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, CheckCircle2, Loader2, MapPin, User, X } from 'lucide-react';
 import ProtectedMediaImage from '@/components/ProtectedMediaImage';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
@@ -30,12 +30,22 @@ const statusClass: Record<SubmissionStatus, string> = {
 };
 
 export default function AdminSubmissionDetailClient({ id }: { id: string }) {
+  const router = useRouter();
   const { addNotification } = useNotifications();
   const [submission, setSubmission] = useState<SoumissionBien | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+
+  const handleBackNavigation = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    router.push('/admin/submissions');
+  };
 
   useEffect(() => {
     const loadSubmission = async () => {
@@ -112,7 +122,9 @@ export default function AdminSubmissionDetailClient({ id }: { id: string }) {
   };
 
   const rejectSubmission = async () => {
-    if (!submission || rejectReason.trim().length < 10) {
+    if (!submission) return;
+    if (rejectReason.trim().length < 3) {
+      addNotification({ type: 'alerte', titre: 'Le motif du refus doit comporter au moins 3 caractères.', message: '' });
       return;
     }
 
@@ -160,25 +172,27 @@ export default function AdminSubmissionDetailClient({ id }: { id: string }) {
     return (
       <section className="rounded-2xl border border-red-200 bg-red-50 p-6">
         <p className="text-sm text-red-700">{error || 'Soumission introuvable.'}</p>
-        <Link
-          href="/admin/submissions"
+        <button
+          type="button"
+          onClick={handleBackNavigation}
           className="mt-4 inline-flex rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 hover:bg-red-100"
         >
           Retour aux soumissions
-        </Link>
+        </button>
       </section>
     );
   }
 
   return (
     <section className="space-y-6">
-      <Link
-        href="/admin/submissions"
+      <button
+        type="button"
+        onClick={handleBackNavigation}
         className="inline-flex items-center gap-2 text-sm font-medium text-zinc-600 transition hover:text-zinc-900"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" />
         Retour aux soumissions
-      </Link>
+      </button>
 
       <article className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -323,37 +337,52 @@ export default function AdminSubmissionDetailClient({ id }: { id: string }) {
         </article>
       )}
 
+      {/* Debug: afficher le statut */}
+      <div className="mb-4 rounded-lg bg-yellow-50 p-3 text-xs text-yellow-800">
+        DEBUG: Statut = "{submission?.statut}" | en_examen ? {submission?.statut === 'en_examen'}
+      </div>
+
       {submission.statut === 'en_examen' ? (
         <article className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
           <h2 className="text-base font-semibold text-zinc-900">Décision admin</h2>
-          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          <div className="mt-4 flex flex-col gap-3">
             <button
               type="button"
               onClick={approveSubmission}
               disabled={isProcessing}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-50"
             >
               {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
               Approuver et publier
             </button>
 
             <div className="rounded-lg border border-red-200 bg-red-50 p-3">
+              <p className="mb-2 text-sm font-medium text-red-900">Motif du refus</p>
               <textarea
                 value={rejectReason}
                 onChange={(event) => setRejectReason(event.target.value)}
-                placeholder="Motif du refus (minimum 10 caractères)..."
+                placeholder="Motif du refus..."
                 className="w-full rounded-md border border-red-200 bg-white px-3 py-2 text-sm text-zinc-800 outline-none focus:border-red-400"
                 rows={3}
               />
-              <button
-                type="button"
-                onClick={rejectSubmission}
-                disabled={isProcessing || rejectReason.trim().length < 10}
-                className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-              >
-                {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
-                Refuser la soumission
-              </button>
+              <div className="mt-2 flex items-center justify-between">
+                <span className={`text-xs ${rejectReason.trim().length < 3 ? 'text-red-600' : 'text-green-600'}`}>
+                  {rejectReason.trim().length}/3 caractères minimum
+                </span>
+                <button
+                  type="button"
+                  onClick={rejectSubmission}
+                  disabled={isProcessing || rejectReason.trim().length < 3}
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                    rejectReason.trim().length >= 3 && !isProcessing
+                      ? 'bg-red-600 text-white hover:bg-red-700'
+                      : 'bg-red-300 text-white cursor-not-allowed'
+                  }`}
+                >
+                  {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                  Refuser la soumission
+                </button>
+              </div>
             </div>
           </div>
         </article>

@@ -121,7 +121,9 @@ export default function AdminSubmissionsPage() {
   };
 
   const handleReject = async () => {
-    if (!rejectingSubmissionId || rejectReason.trim().length < 10) {
+    if (!rejectingSubmissionId) return;
+    if (rejectReason.trim().length < 3) {
+      addNotification({ type: 'alerte', titre: 'Le motif du refus doit comporter au moins 3 caractères.', message: '' });
       return;
     }
 
@@ -296,7 +298,7 @@ export default function AdminSubmissionsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
           <div className="w-full max-w-lg rounded-2xl border border-black/5 bg-white p-5 shadow-xl sm:p-6">
             <h2 className="text-base font-semibold text-zinc-900">Refuser la soumission</h2>
-            <p className="mt-1 text-sm text-zinc-600">Saisissez un motif de refus (minimum 10 caractères).</p>
+            <p className="mt-1 text-sm text-zinc-600">Saisissez un motif de refus.</p>
 
             <textarea
               value={rejectReason}
@@ -317,7 +319,7 @@ export default function AdminSubmissionsPage() {
               <button
                 type="button"
                 onClick={handleReject}
-                disabled={isProcessingId === rejectingSubmissionId || rejectReason.trim().length < 10}
+                disabled={isProcessingId === rejectingSubmissionId || rejectReason.trim().length < 3}
                 className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-red-700 disabled:opacity-60"
               >
                 {isProcessingId === rejectingSubmissionId ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}

@@ -1,12 +1,15 @@
 "use client";
 
 import Link from 'next/link';
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Building2, Loader2, Pencil, PlusCircle, Trash2, X } from 'lucide-react';
+import { useVirtualVisits } from '@/components/virtual-visits/VirtualVisitProvider';
+import { useNotifications } from '@/components/notifications/NotificationProvider';
 import { PatrimoineService } from '@/lib/patrimoine-service';
 import { normalizeMediaUrl } from '@/lib/utils';
 import { UserResponse, UserService } from '@/lib/user-service';
-import { Bien } from '@/types/api';
+import { Bien, Immeuble } from '@/types/api';
 import { Categorie } from '@/types/api';
 
 type AdminProperty = {
@@ -19,30 +22,48 @@ type AdminProperty = {
 };
 
 type PropertyFormState = {
+  titre: string;
   proprietaire: string;
   categorie: string;
+  immeuble: string;
   adresse: string;
   description: string;
   loyer_hc: string;
   charges: string;
-  statut: 'vacant' | 'loue' | 'en_travaux';
+  surface: string;
+  nombre_pieces: string;
+  nombre_chambres: string;
+  statut: 'vacant' | 'loue' | 'en_travaux' | 'maintenance';
 };
 
 const statusLabel: Record<string, string> = {
   vacant: 'Vacant',
-  loue: 'Loue',
+  loue: 'Loué',
   en_travaux: 'En travaux',
   maintenance: 'Maintenance',
-  reservation: 'Reservation',
+  reservation: 'Réservation',
+};
+
+const statusBadgeClass: Record<string, string> = {
+  vacant: 'bg-green-100 text-green-700',
+  loue: 'bg-blue-100 text-blue-700',
+  en_travaux: 'bg-orange-100 text-orange-700',
+  maintenance: 'bg-orange-100 text-orange-700',
+  reservation: 'bg-purple-100 text-purple-700',
 };
 
 const INITIAL_FORM: PropertyFormState = {
+  titre: '',
   proprietaire: '',
   categorie: '',
+  immeuble: '',
   adresse: '',
   description: '',
   loyer_hc: '',
   charges: '0',
+  surface: '',
+  nombre_pieces: '',
+  nombre_chambres: '',
   statut: 'vacant',
 };
 
@@ -95,15 +116,19 @@ function mapProperty(property: Bien): AdminProperty {
   };
 }
 
-export default function AdminPropertiesPage() {
+function AdminPropertiesPageInner() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { tours } = useVirtualVisits();
+  const { addNotification } = useNotifications();
   const [properties, setProperties] = useState<AdminProperty[]>([]);
   const [categories, setCategories] = useState<Categorie[]>([]);
   const [owners, setOwners] = useState<UserResponse[]>([]);
+  const [immeubles, setImmeubles] = useState<Immeuble[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingPropertyId, setDeletingPropertyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState('');
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPropertyId, setEditingPropertyId] = useState<string | null>(null);
@@ -111,7 +136,6 @@ export default function AdminPropertiesPage() {
 
   const clearMessages = () => {
     setError(null);
-    setSuccessMessage('');
   };
 
   const loadProperties = async () => {
@@ -136,9 +160,10 @@ export default function AdminPropertiesPage() {
 
   const loadCategoriesAndOwners = async () => {
     try {
-      const [categoriesResponse, usersResponse] = await Promise.all([
+      const [categoriesResponse, usersResponse, immeublesResponse] = await Promise.all([
         PatrimoineService.getCategories(),
         UserService.getAllUsers(),
+        PatrimoineService.getImmeubles(),
       ]);
 
       if (categoriesResponse.success && categoriesResponse.data) {
@@ -152,6 +177,10 @@ export default function AdminPropertiesPage() {
           ),
         );
       }
+
+      if (immeublesResponse.success && immeublesResponse.data) {
+        setImmeubles(immeublesResponse.data);
+      }
     } catch (err) {
       console.error('Erreur chargement options formulaire bien:', err);
     }
@@ -161,6 +190,11 @@ export default function AdminPropertiesPage() {
     loadProperties();
     loadCategoriesAndOwners();
   }, []);
+
+  const scheduledVirtualVisitPropertyIds = useMemo(
+    () => new Set(tours.map((tour) => tour.propertyId)),
+    [tours],
+  );
 
   const totalLabel = useMemo(() => `${properties.length} bien(s)`, [properties.length]);
 
@@ -193,21 +227,34 @@ export default function AdminPropertiesPage() {
       const bien = response.data;
       setEditingPropertyId(propertyId);
       setFormState({
+        titre: bien.titre || '',
         proprietaire: bien.proprietaire || '',
         categorie: bien.categorie || '',
+        immeuble: bien.immeuble || '',
         adresse: bien.adresse || bien.adresse_complete || '',
         description: bien.description || '',
-        loyer_hc: String((bien as unknown as Record<string, unknown>).loyer_hc ?? ''),
-        charges: String((bien as unknown as Record<string, unknown>).charges ?? 0),
-        statut: (['vacant', 'loue', 'en_travaux'].includes(String(bien.statut))
+        loyer_hc: String(bien.loyer_hc ?? bien.loyer_mensuel ?? ''),
+        charges: String(bien.charges ?? bien.charges_mensuelles ?? 0),
+        surface: String(bien.surface || ''),
+        nombre_pieces: String(bien.nombre_pieces || ''),
+        nombre_chambres: String(bien.nombre_chambres || ''),
+        statut: (['vacant', 'loue', 'en_travaux', 'maintenance'].includes(String(bien.statut))
           ? String(bien.statut)
-          : 'vacant') as 'vacant' | 'loue' | 'en_travaux',
+          : 'vacant') as 'vacant' | 'loue' | 'en_travaux' | 'maintenance',
       });
       setIsModalOpen(true);
     } catch (err) {
-      setError('Erreur technique lors du chargement du bien.');
+      addNotification({ type: 'alerte', titre: 'Erreur technique lors du chargement du bien.', message: '' });
     }
   };
+
+  useEffect(() => {
+    const editId = searchParams.get('edit');
+    if (editId && !isLoading) {
+      openEditModal(editId);
+      router.replace('/admin/properties');
+    }
+  }, [searchParams, isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -217,22 +264,31 @@ export default function AdminPropertiesPage() {
     const chargesValue = Number(formState.charges || 0);
 
     if (!formState.proprietaire || !formState.adresse.trim() || Number.isNaN(loyerValue) || loyerValue < 0) {
-      setError('Proprietaire, adresse et loyer valide sont obligatoires.');
+      addNotification({ type: 'alerte', titre: 'Propriétaire, adresse et loyer valide sont obligatoires.', message: '' });
       return;
     }
 
     if (Number.isNaN(chargesValue) || chargesValue < 0) {
-      setError('Les charges doivent etre un nombre positif.');
+      addNotification({ type: 'alerte', titre: 'Les charges doivent être un nombre positif.', message: '' });
       return;
     }
 
-    const payload = {
+    const surfaceValue = formState.surface ? Number(formState.surface) : undefined;
+    const piecesValue = formState.nombre_pieces ? Number(formState.nombre_pieces) : undefined;
+    const chambresValue = formState.nombre_chambres ? Number(formState.nombre_chambres) : undefined;
+
+    const payload: Record<string, unknown> = {
+      titre: formState.titre.trim() || undefined,
       proprietaire: formState.proprietaire,
-      categorie: formState.categorie || null,
+      categorie: formState.categorie || undefined,
+      immeuble: formState.immeuble || undefined,
       adresse: formState.adresse.trim(),
       description: formState.description.trim(),
       loyer_hc: loyerValue,
       charges: chargesValue,
+      surface: surfaceValue,
+      nombre_pieces: piecesValue,
+      nombre_chambres: chambresValue,
       statut: formState.statut,
     };
 
@@ -243,16 +299,16 @@ export default function AdminPropertiesPage() {
         : await PatrimoineService.createBien(payload);
 
       if (!response.success) {
-        setError(response.message || 'Sauvegarde du bien impossible.');
+        addNotification({ type: 'alerte', titre: response.message || 'Sauvegarde du bien impossible.', message: '' });
         return;
       }
 
-      setSuccessMessage(editingPropertyId ? 'Bien mis a jour avec succes.' : 'Bien cree avec succes.');
+      addNotification({ type: 'info', titre: editingPropertyId ? 'Bien mis à jour avec succès.' : 'Bien créé avec succès.', message: '' });
       closeModal();
       await loadProperties();
     } catch (err) {
       console.error('Erreur sauvegarde bien admin:', err);
-      setError('Erreur technique lors de la sauvegarde du bien.');
+      addNotification({ type: 'alerte', titre: 'Erreur technique lors de la sauvegarde du bien.', message: '' });
     } finally {
       setIsSubmitting(false);
     }
@@ -269,15 +325,15 @@ export default function AdminPropertiesPage() {
       setDeletingPropertyId(property.id);
       const response = await PatrimoineService.deleteBien(property.id);
       if (!response.success) {
-        setError(response.message || 'Suppression impossible.');
+        addNotification({ type: 'alerte', titre: response.message || 'Suppression impossible. Le bien est peut-être lié à un bail actif.', message: '' });
         return;
       }
 
-      setSuccessMessage('Bien supprime avec succes.');
+      addNotification({ type: 'info', titre: 'Bien supprimé avec succès.', message: '' });
       await loadProperties();
     } catch (err) {
       console.error('Erreur suppression bien admin:', err);
-      setError('Erreur technique lors de la suppression du bien.');
+      addNotification({ type: 'alerte', titre: 'Erreur technique lors de la suppression du bien.', message: '' });
     } finally {
       setDeletingPropertyId(null);
     }
@@ -300,10 +356,9 @@ export default function AdminPropertiesPage() {
         </button>
       </div>
 
-      {(error || successMessage) && (
-        <div className="rounded-xl border border-zinc-200 bg-white p-4">
-          {error && <p className="text-sm font-medium text-red-700">{error}</p>}
-          {successMessage && <p className="text-sm font-medium text-green-700">{successMessage}</p>}
+      {error && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4">
+          <p className="text-sm font-medium text-red-700">{error}</p>
         </div>
       )}
 
@@ -339,9 +394,20 @@ export default function AdminPropertiesPage() {
                 <div className="space-y-2 p-3">
                   <p className="truncate text-sm font-semibold text-zinc-900">{property.title}</p>
                   <p className="truncate text-xs text-zinc-600">{property.address}</p>
-                  <span className="inline-flex rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-700">
-                    {statusLabel[property.status] || property.status}
-                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium ${statusBadgeClass[property.status] || 'bg-zinc-100 text-zinc-700'}`}>
+                      {statusLabel[property.status] || property.status}
+                    </span>
+                    {scheduledVirtualVisitPropertyIds.has(property.id) ? (
+                      <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                        Visite virtuelle programmée
+                      </span>
+                    ) : (
+                      <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                        Visite virtuelle non programmée
+                      </span>
+                    )}
+                  </div>
 
                   <div className="flex gap-2 pt-1" onClick={(event) => event.preventDefault()}>
                     <button
@@ -370,11 +436,11 @@ export default function AdminPropertiesPage() {
       </article>
 
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
-          <div className="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4 py-6">
+          <div className="w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" style={{ maxHeight: '90vh' }}>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold text-zinc-900">
-                {editingPropertyId ? 'Modifier le bien' : 'Creer un bien'}
+                {editingPropertyId ? 'Modifier le bien' : 'Créer un bien'}
               </h2>
               <button
                 type="button"
@@ -388,14 +454,24 @@ export default function AdminPropertiesPage() {
             <form onSubmit={handleSubmit} className="space-y-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <label className="flex flex-col gap-1.5 text-xs font-medium text-zinc-600">
-                  Proprietaire *
+                  Titre
+                  <input
+                    value={formState.titre}
+                    onChange={(event) => setFormState((current) => ({ ...current, titre: event.target.value }))}
+                    placeholder="Ex: Appartement T3 lumineux"
+                    className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1.5 text-xs font-medium text-zinc-600">
+                  Propriétaire *
                   <select
                     value={formState.proprietaire}
                     onChange={(event) => setFormState((current) => ({ ...current, proprietaire: event.target.value }))}
                     className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900"
                     required
                   >
-                    <option value="">Selectionner</option>
+                    <option value="">Sélectionner</option>
                     {owners.map((owner) => (
                       <option key={owner.id} value={owner.id}>
                         {owner.full_name || `${owner.first_name} ${owner.last_name}`.trim() || owner.email}
@@ -405,7 +481,7 @@ export default function AdminPropertiesPage() {
                 </label>
 
                 <label className="flex flex-col gap-1.5 text-xs font-medium text-zinc-600">
-                  Categorie
+                  Catégorie
                   <select
                     value={formState.categorie}
                     onChange={(event) => setFormState((current) => ({ ...current, categorie: event.target.value }))}
@@ -415,6 +491,22 @@ export default function AdminPropertiesPage() {
                     {categories.map((category) => (
                       <option key={category.id} value={category.id}>
                         {category.nom}{category.type_detail ? ` - ${category.type_detail}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="flex flex-col gap-1.5 text-xs font-medium text-zinc-600">
+                  Immeuble
+                  <select
+                    value={formState.immeuble}
+                    onChange={(event) => setFormState((current) => ({ ...current, immeuble: event.target.value }))}
+                    className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900"
+                  >
+                    <option value="">Aucun</option>
+                    {immeubles.map((immeuble) => (
+                      <option key={immeuble.id} value={immeuble.id}>
+                        {immeuble.nom} — {immeuble.adresse}
                       </option>
                     ))}
                   </select>
@@ -434,16 +526,16 @@ export default function AdminPropertiesPage() {
               <label className="flex flex-col gap-1.5 text-xs font-medium text-zinc-600">
                 Description
                 <textarea
-                  rows={3}
+                  rows={2}
                   value={formState.description}
                   onChange={(event) => setFormState((current) => ({ ...current, description: event.target.value }))}
                   className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
                 />
               </label>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <label className="flex flex-col gap-1.5 text-xs font-medium text-zinc-600">
-                  Loyer HC *
+                  Loyer HC (FCFA) *
                   <input
                     type="number"
                     min="0"
@@ -456,7 +548,7 @@ export default function AdminPropertiesPage() {
                 </label>
 
                 <label className="flex flex-col gap-1.5 text-xs font-medium text-zinc-600">
-                  Charges
+                  Charges (FCFA)
                   <input
                     type="number"
                     min="0"
@@ -468,20 +560,57 @@ export default function AdminPropertiesPage() {
                 </label>
 
                 <label className="flex flex-col gap-1.5 text-xs font-medium text-zinc-600">
-                  Statut
+                  Surface (m²)
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={formState.surface}
+                    onChange={(event) => setFormState((current) => ({ ...current, surface: event.target.value }))}
+                    className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1.5 text-xs font-medium text-zinc-600">
+                  Nb de pièces
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={formState.nombre_pieces}
+                    onChange={(event) => setFormState((current) => ({ ...current, nombre_pieces: event.target.value }))}
+                    className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1.5 text-xs font-medium text-zinc-600">
+                  Nb de chambres
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={formState.nombre_chambres}
+                    onChange={(event) => setFormState((current) => ({ ...current, nombre_chambres: event.target.value }))}
+                    className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900"
+                  />
+                </label>
+
+                <label className="flex flex-col gap-1.5 text-xs font-medium text-zinc-600">
+                  Statut *
                   <select
                     value={formState.statut}
                     onChange={(event) =>
                       setFormState((current) => ({
                         ...current,
-                        statut: event.target.value as 'vacant' | 'loue' | 'en_travaux',
+                        statut: event.target.value as 'vacant' | 'loue' | 'en_travaux' | 'maintenance',
                       }))
                     }
                     className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm text-zinc-900"
                   >
                     <option value="vacant">Vacant</option>
-                    <option value="loue">Loue</option>
+                    <option value="loue">Loué</option>
                     <option value="en_travaux">En travaux</option>
+                    <option value="maintenance">Maintenance</option>
                   </select>
                 </label>
               </div>
@@ -500,7 +629,7 @@ export default function AdminPropertiesPage() {
                   className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-700 disabled:opacity-60"
                 >
                   {isSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : null}
-                  {isSubmitting ? 'Enregistrement...' : editingPropertyId ? 'Enregistrer' : 'Creer'}
+                  {isSubmitting ? 'Enregistrement...' : editingPropertyId ? 'Enregistrer' : 'Créer'}
                 </button>
               </div>
             </form>
@@ -508,5 +637,13 @@ export default function AdminPropertiesPage() {
         </div>
       )}
     </section>
+  );
+}
+
+export default function AdminPropertiesPage() {
+  return (
+    <Suspense fallback={null}>
+      <AdminPropertiesPageInner />
+    </Suspense>
   );
 }

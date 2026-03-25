@@ -80,7 +80,7 @@ export class UserService {
   // Désactiver un utilisateur (Super Admin uniquement)
   static async desactivateUser(userId: string): Promise<StandardApiResponse<{ message: string }>> {
     try {
-      return await apiClient.post<{ message: string }>(`/auth/users/${userId}/desactiver/`);
+      return await apiClient.patch<{ message: string }>(`/auth/users/${userId}/desactiver/`);
     } catch (error) {
       console.error('Desactivate user error:', error);
       throw error;
@@ -90,7 +90,7 @@ export class UserService {
   // Réactiver un utilisateur (Super Admin uniquement)
   static async reactivateUser(userId: string): Promise<StandardApiResponse<{ message: string }>> {
     try {
-      return await apiClient.post<{ message: string }>(`/auth/users/${userId}/reactiver/`);
+      return await apiClient.patch<{ message: string }>(`/auth/users/${userId}/reactiver/`);
     } catch (error) {
       console.error('Reactivate user error:', error);
       throw error;

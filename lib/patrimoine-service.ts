@@ -82,6 +82,14 @@ export class PatrimoineService {
     return await apiClient.upload<PhotoBien[]>(`/patrimoine/biens/${id}/photos/`, formData);
   }
 
+  static async deleteBienPhoto(bienId: string, photoId: string): Promise<StandardApiResponse<void>> {
+    return await apiClient.delete<void>(`/patrimoine/biens/${bienId}/photos/${photoId}/`);
+  }
+
+  static async reorderBienPhotos(bienId: string, orderedIds: string[]): Promise<StandardApiResponse<PhotoBien[]>> {
+    return await apiClient.post<PhotoBien[]>(`/patrimoine/biens/${bienId}/photos/reorder/`, { ordered_ids: orderedIds });
+  }
+
   static async getBiensPublic(): Promise<StandardApiResponse<Bien[]>> {
     return await apiClient.get<Bien[]>('/patrimoine/biens/public/');
   }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BarChart3, Bell, Building2, CheckCircle2, CreditCard, FileText, LayoutDashboard, LogOut, Settings2, Tags, Users, Video } from 'lucide-react';
 import { AuthService } from '@/lib/auth-service';
+import ThemeToggle from '@/components/theme/ThemeToggle';
 
 const adminNav = [
   { href: '/admin', label: 'Vue d\'ensemble', icon: LayoutDashboard, exact: true },
@@ -63,15 +64,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             })}
           </nav>
 
-          <button
-            type="button"
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-3 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <LogOut className="h-4 w-4" aria-hidden="true" />
-            <span>{isLoggingOut ? 'Déconnexion...' : 'Déconnexion'}</span>
-          </button>
+          <div className="mt-4 flex flex-col gap-2">
+            <ThemeToggle inline />
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="inline-flex items-center gap-2 rounded-xl border border-zinc-200 px-3 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <LogOut className="h-4 w-4" aria-hidden="true" />
+              <span>{isLoggingOut ? 'Déconnexion...' : 'Déconnexion'}</span>
+            </button>
+          </div>
         </div>
       </aside>
 

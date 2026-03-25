@@ -84,7 +84,7 @@ const transformPaiement = (p: Paiement): PaymentRecord => ({
   id: p.id,
   reference: p.transaction_ref || p.id.slice(0, 8).toUpperCase(),
   tenantName: p.bail_detail?.locataire_nom || 'Locataire',
-  propertyTitle: p.bail_detail?.bien_adresse || p.intitule || 'Bien',
+  propertyTitle: p.bail_detail?.bien_adresse || p.intitule || (p.bail ? `Bail ${p.bail.slice(0, 8)}` : 'Bien non renseigné'),
   amount: p.montant,
   month: new Date(p.mois_concerne).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
   channel: mapBackendSource(p.source_paiement),

@@ -3,9 +3,12 @@
 import Link from 'next/link';
 import { ChangeEvent, useEffect, useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, BedDouble, Building2, DoorOpen, Loader2, MapPin, Ruler } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { ArrowLeft, BedDouble, Building2, ChevronDown, ChevronUp, DoorOpen, Loader2, MapPin, Pencil, Plus, Ruler, Trash2 } from 'lucide-react';
 import PropertyGallery from '@/components/PropertyGallery';
+import { useNotifications } from '@/components/notifications/NotificationProvider';
 import { PatrimoineService } from '@/lib/patrimoine-service';
+import { normalizeMediaUrl } from '@/lib/utils';
 import { Bien, PhotoBien } from '@/types/api';
 import type { MapPropertyPoint } from '@/components/owner/PropertyLocationMap';
 
@@ -14,7 +17,7 @@ const PropertyLocationMap = dynamic(() => import('@/components/owner/PropertyLoc
   loading: () => <div className="h-80 w-full animate-pulse rounded-xl bg-zinc-100" />,
 });
 
-type UiStatus = 'vacant' | 'rented' | 'maintenance';
+type UiStatus = 'vacant' | 'rented' | 'maintenance' | 'en_travaux';
 
 type UiProperty = {
   id: string;
@@ -41,11 +44,15 @@ const statusStyles: Record<UiStatus, { label: string; className: string }> = {
     className: 'bg-green-100 text-green-700 ring-green-200',
   },
   rented: {
-    label: 'Loue',
+    label: 'Loué',
     className: 'bg-blue-100 text-blue-700 ring-blue-200',
   },
   maintenance: {
     label: 'Maintenance',
+    className: 'bg-orange-100 text-orange-700 ring-orange-200',
+  },
+  en_travaux: {
+    label: 'En travaux',
     className: 'bg-orange-100 text-orange-700 ring-orange-200',
   },
 };
@@ -59,6 +66,10 @@ const currencyFormatter = new Intl.NumberFormat('fr-TG', {
 function mapStatutToUi(statut: Bien['statut']): UiStatus {
   if (statut === 'loue' || statut === 'reservation') {
     return 'rented';
+  }
+
+  if (statut === 'en_travaux') {
+    return 'en_travaux';
   }
 
   if (statut === 'maintenance') {
@@ -117,29 +128,63 @@ type OwnerPropertyDetailClientProps = {
   id: string;
   backHref?: string;
   backLabel?: string;
+  preferHistoryBack?: boolean;
   showOwnerActions?: boolean;
   secondaryActionHref?: string;
   secondaryActionLabel?: string;
+  onEditClick?: (propertyId: string) => void;
 };
 
 export default function OwnerPropertyDetailClient({
   id,
   backHref = '/owner/properties',
   backLabel = 'Retour a Mes biens',
+  preferHistoryBack = false,
   showOwnerActions = true,
   secondaryActionHref = '/owner/reports',
   secondaryActionLabel = 'Voir les rapports',
+  onEditClick,
 }: OwnerPropertyDetailClientProps) {
+  const router = useRouter();
+  const { addNotification } = useNotifications();
   const [property, setProperty] = useState<UiProperty | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [locationPoints, setLocationPoints] = useState<MapPropertyPoint[]>([]);
   const [relatedCount, setRelatedCount] = useState(0);
+  const [photoObjects, setPhotoObjects] = useState<PhotoBien[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null);
+  const [isReordering, setIsReordering] = useState(false);
 
   const status = useMemo(() => (property ? statusStyles[property.status] : null), [property]);
+
+  const handleBackNavigation = () => {
+    if (preferHistoryBack && typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    router.push(backHref);
+  };
+
+  const loadPhotos = async () => {
+    const response = await PatrimoineService.getBienPhotos(id);
+    if (!response.success || !response.data) {
+      return;
+    }
+    const sorted = [...response.data].sort((a, b) => a.ordre - b.ordre);
+    setPhotoObjects(sorted);
+    const urls = sorted
+      .map((p) => p.fichier)
+      .filter((u): u is string => Boolean(u))
+      .map((u) => normalizeMediaUrl(u));
+    setProperty((current) => {
+      if (!current) return current;
+      return { ...current, photos: urls };
+    });
+  };
 
   useEffect(() => {
     const loadProperty = async () => {
@@ -186,6 +231,8 @@ export default function OwnerPropertyDetailClient({
           setRelatedCount(0);
           setLocationPoints(points);
         }
+
+        await loadPhotos();
       } catch (err) {
         console.error('Erreur detail bien owner:', err);
         setError('Erreur technique lors du chargement du bien.');
@@ -203,59 +250,77 @@ export default function OwnerPropertyDetailClient({
       setSelectedFiles([]);
       return;
     }
-
-    setUploadError(null);
     setSelectedFiles(Array.from(files));
-  };
-
-  const loadPhotos = async () => {
-    const response = await PatrimoineService.getBienPhotos(id);
-    if (!response.success || !response.data) {
-      return;
-    }
-
-    const uploadedUrls = response.data
-      .map((photo: PhotoBien) => photo?.fichier)
-      .filter((url): url is string => Boolean(url));
-
-    setProperty((current) => {
-      if (!current) return current;
-      return {
-        ...current,
-        photos: uploadedUrls,
-      };
-    });
   };
 
   const handleUploadPhotos = async () => {
     if (selectedFiles.length === 0) {
-      setUploadError('Selectionnez au moins une image.');
+      addNotification({ type: 'alerte', titre: 'Sélectionnez au moins une image.', message: '' });
       return;
     }
 
     try {
       setIsUploading(true);
-      setUploadError(null);
 
       const formData = new FormData();
       selectedFiles.forEach((file) => {
-        // Backend attendu: request.FILES.getlist("fichiers")
         formData.append('fichiers', file);
       });
 
       const response = await PatrimoineService.addBienPhotos(id, formData);
       if (!response.success) {
-        setUploadError(response.message || "Echec de l'upload des images.");
+        addNotification({ type: 'alerte', titre: response.message || "Échec de l'upload des images.", message: '' });
         return;
       }
 
       setSelectedFiles([]);
+      addNotification({ type: 'info', titre: 'Photos ajoutées avec succès.', message: '' });
       await loadPhotos();
     } catch (err) {
       console.error('Erreur upload photos:', err);
-      setUploadError('Erreur technique pendant l\'upload.');
+      addNotification({ type: 'alerte', titre: "Erreur technique pendant l'upload.", message: '' });
     } finally {
       setIsUploading(false);
+    }
+  };
+
+  const handleDeletePhoto = async (photo: PhotoBien) => {
+    if (!window.confirm('Supprimer cette photo ?')) return;
+    try {
+      setDeletingPhotoId(photo.id);
+      const response = await PatrimoineService.deleteBienPhoto(id, photo.id);
+      if (!response.success) {
+        addNotification({ type: 'alerte', titre: response.message || 'Suppression de la photo impossible.', message: '' });
+        return;
+      }
+      addNotification({ type: 'info', titre: 'Photo supprimée.', message: '' });
+      await loadPhotos();
+    } catch (err) {
+      addNotification({ type: 'alerte', titre: 'Erreur technique lors de la suppression.', message: '' });
+    } finally {
+      setDeletingPhotoId(null);
+    }
+  };
+
+  const movePhoto = async (index: number, direction: 'up' | 'down') => {
+    const newPhotos = [...photoObjects];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newPhotos.length) return;
+    [newPhotos[index], newPhotos[targetIndex]] = [newPhotos[targetIndex], newPhotos[index]];
+    setPhotoObjects(newPhotos);
+
+    try {
+      setIsReordering(true);
+      const response = await PatrimoineService.reorderBienPhotos(id, newPhotos.map((p) => p.id));
+      if (!response.success) {
+        addNotification({ type: 'alerte', titre: 'Erreur lors du réordonnancement.', message: '' });
+        await loadPhotos();
+      }
+    } catch (err) {
+      addNotification({ type: 'alerte', titre: 'Erreur technique lors du réordonnancement.', message: '' });
+      await loadPhotos();
+    } finally {
+      setIsReordering(false);
     }
   };
 
@@ -275,12 +340,22 @@ export default function OwnerPropertyDetailClient({
       <section className="rounded-2xl border border-red-200 bg-red-50 p-6">
         <p className="text-sm text-red-700">{error || 'Bien introuvable.'}</p>
         <div className="mt-3">
-          <Link
-            href={backHref}
-            className="inline-flex items-center rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-100"
-          >
-            {backLabel}
-          </Link>
+          {preferHistoryBack ? (
+            <button
+              type="button"
+              onClick={handleBackNavigation}
+              className="inline-flex items-center rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-100"
+            >
+              {backLabel}
+            </button>
+          ) : (
+            <Link
+              href={backHref}
+              className="inline-flex items-center rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-100"
+            >
+              {backLabel}
+            </Link>
+          )}
         </div>
       </section>
     );
@@ -288,13 +363,24 @@ export default function OwnerPropertyDetailClient({
 
   return (
     <div className="mx-auto w-full max-w-6xl">
-      <Link
-        href={backHref}
-        className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-zinc-600 transition hover:text-zinc-900"
-      >
-        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-        {backLabel}
-      </Link>
+      {preferHistoryBack ? (
+        <button
+          type="button"
+          onClick={handleBackNavigation}
+          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-zinc-600 transition hover:text-zinc-900"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          {backLabel}
+        </button>
+      ) : (
+        <Link
+          href={backHref}
+          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-zinc-600 transition hover:text-zinc-900"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+          {backLabel}
+        </Link>
+      )}
 
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -309,38 +395,85 @@ export default function OwnerPropertyDetailClient({
         </span>
       </div>
 
-      {property.photos.length > 0 ? (
+      {property.photos.length > 0 && (
         <PropertyGallery title={property.title} images={property.photos} />
-      ) : (
-        <section className="mb-8 rounded-2xl border border-dashed border-zinc-300 bg-white p-5 sm:p-6">
-          <h2 className="text-base font-semibold text-zinc-900">Aucune photo pour ce bien</h2>
-          <p className="mt-1 text-sm text-zinc-600">
-            Ajoutez des images pour afficher la galerie du bien.
-          </p>
-
-          <div className="mt-4 space-y-3">
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleFileChange}
-              className="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-zinc-800"
-            />
-            {selectedFiles.length > 0 && (
-              <p className="text-xs text-zinc-500">{selectedFiles.length} image(s) selectionnee(s)</p>
-            )}
-            {uploadError && <p className="text-sm text-red-700">{uploadError}</p>}
-            <button
-              type="button"
-              onClick={handleUploadPhotos}
-              disabled={isUploading || selectedFiles.length === 0}
-              className="inline-flex items-center rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isUploading ? 'Upload en cours...' : 'Uploader les photos'}
-            </button>
-          </div>
-        </section>
       )}
+
+      <section className="mb-6 rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
+        <h2 className="mb-3 text-base font-semibold text-zinc-900">Photos du bien ({photoObjects.length})</h2>
+
+        {photoObjects.length > 0 && (
+          <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            {photoObjects.map((photo, index) => (
+              <div key={photo.id} className="group relative overflow-hidden rounded-xl border border-zinc-200 bg-zinc-100">
+                <img
+                  src={normalizeMediaUrl(photo.fichier)}
+                  alt={`Photo ${index + 1}`}
+                  className="h-28 w-full object-cover"
+                  onError={(e) => { e.currentTarget.src = '/window.svg'; }}
+                />
+                <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-1 bg-black/50 px-2 py-1">
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => movePhoto(index, 'up')}
+                      disabled={index === 0 || isReordering}
+                      className="inline-flex rounded p-0.5 text-white hover:bg-white/20 disabled:opacity-40"
+                      title="Monter"
+                    >
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => movePhoto(index, 'down')}
+                      disabled={index === photoObjects.length - 1 || isReordering}
+                      className="inline-flex rounded p-0.5 text-white hover:bg-white/20 disabled:opacity-40"
+                      title="Descendre"
+                    >
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePhoto(photo)}
+                    disabled={deletingPhotoId === photo.id}
+                    className="inline-flex rounded p-0.5 text-red-300 hover:bg-white/20 disabled:opacity-40"
+                    title="Supprimer"
+                  >
+                    {deletingPhotoId === photo.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                  </button>
+                </div>
+                {index === 0 && (
+                  <span className="absolute left-1.5 top-1.5 rounded-full bg-zinc-900/80 px-1.5 py-0.5 text-[10px] font-medium text-white">Principale</span>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-zinc-600">Ajouter des photos</p>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handleFileChange}
+            className="block w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 file:mr-3 file:rounded-md file:border-0 file:bg-zinc-900 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-zinc-800"
+          />
+          {selectedFiles.length > 0 && (
+            <p className="text-xs text-zinc-500">{selectedFiles.length} fichier(s) sélectionné(s)</p>
+          )}
+          <button
+            type="button"
+            onClick={handleUploadPhotos}
+            disabled={isUploading || selectedFiles.length === 0}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            {isUploading ? 'Upload en cours...' : 'Uploader les photos'}
+          </button>
+        </div>
+      </section>
 
       <section className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
         <article className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
@@ -409,14 +542,34 @@ export default function OwnerPropertyDetailClient({
 
           <div className="space-y-3 rounded-xl border border-zinc-200 bg-zinc-50 p-3">
             <p className="text-sm font-medium text-zinc-800">
-              {showOwnerActions ? 'Actions proprietaire' : 'Actions administrateur'}
+              {showOwnerActions ? 'Actions propriétaire' : 'Actions administrateur'}
             </p>
-            <Link
-              href={backHref}
-              className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
-            >
-              Retour a la liste
-            </Link>
+            {onEditClick && (
+              <button
+                type="button"
+                onClick={() => onEditClick(id)}
+                className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white transition hover:bg-zinc-700"
+              >
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+                Modifier ce bien
+              </button>
+            )}
+            {preferHistoryBack ? (
+              <button
+                type="button"
+                onClick={handleBackNavigation}
+                className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
+              >
+                Retour a la page precedente
+              </button>
+            ) : (
+              <Link
+                href={backHref}
+                className="inline-flex w-full items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100"
+              >
+                Retour a la liste
+              </Link>
+            )}
             {showOwnerActions && secondaryActionHref ? (
               <Link
                 href={secondaryActionHref}

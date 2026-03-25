@@ -57,9 +57,13 @@ export default function AdminNotificationsPage() {
   }, []);
 
   const toggleRecipient = (userId: string) => {
-    setSelectedUserIds((current) =>
-      current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId],
-    );
+    if (modeEnvoi === 'individuel') {
+      setSelectedUserIds([userId]);
+    } else {
+      setSelectedUserIds((current) =>
+        current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId],
+      );
+    }
   };
 
   const resetForm = () => {
@@ -202,10 +206,11 @@ export default function AdminNotificationsPage() {
                     return (
                       <label key={user.id} className="flex cursor-pointer items-center gap-2 rounded-lg bg-white px-3 py-2 text-sm text-zinc-800">
                         <input
-                          type="checkbox"
+                          type={modeEnvoi === 'individuel' ? 'radio' : 'checkbox'}
+                          name="recipient"
                           checked={isChecked}
                           onChange={() => toggleRecipient(user.id)}
-                          className="h-4 w-4 rounded border-zinc-300"
+                          className="h-4 w-4 border-zinc-300"
                         />
                         <span>
                           {user.full_name || `${user.first_name} ${user.last_name}`.trim() || user.email}

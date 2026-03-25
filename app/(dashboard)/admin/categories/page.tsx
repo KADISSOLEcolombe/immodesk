@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Edit3, Loader2, PlusCircle, Tags, Trash2, X } from 'lucide-react';
+import { useNotifications } from '@/components/notifications/NotificationProvider';
 import { PatrimoineService } from '@/lib/patrimoine-service';
 import { Categorie } from '@/types/api';
 
@@ -16,6 +17,7 @@ const INITIAL_FORM: CategoryForm = {
 };
 
 export default function AdminCategoriesPage() {
+  const { addNotification } = useNotifications();
   const [categories, setCategories] = useState<Categorie[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
@@ -27,7 +29,6 @@ export default function AdminCategoriesPage() {
   const [editForm, setEditForm] = useState<CategoryForm>(INITIAL_FORM);
 
   const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     loadCategories();
@@ -40,7 +41,6 @@ export default function AdminCategoriesPage() {
 
   const clearMessages = () => {
     setError(null);
-    setSuccessMessage('');
   };
 
   const loadCategories = async () => {
@@ -83,11 +83,11 @@ export default function AdminCategoriesPage() {
       }
 
       setCreateForm(INITIAL_FORM);
-      setSuccessMessage('Catégorie créée avec succès.');
+      addNotification({ type: 'info', titre: 'Catégorie créée avec succès.', message: '' });
       await loadCategories();
     } catch (err) {
       console.error('Erreur création catégorie:', err);
-      setError('Erreur technique lors de la création de la catégorie.');
+      addNotification({ type: 'alerte', titre: 'Erreur technique lors de la création de la catégorie.', message: '' });
     } finally {
       setIsCreating(false);
     }
@@ -124,12 +124,12 @@ export default function AdminCategoriesPage() {
         return;
       }
 
-      setSuccessMessage('Catégorie mise à jour avec succès.');
+      addNotification({ type: 'info', titre: 'Catégorie mise à jour avec succès.', message: '' });
       cancelEdit();
       await loadCategories();
     } catch (err) {
       console.error('Erreur update catégorie:', err);
-      setError('Erreur technique lors de la mise à jour.');
+      addNotification({ type: 'alerte', titre: 'Erreur technique lors de la mise à jour.', message: '' });
     } finally {
       setIsUpdating(false);
     }
@@ -155,11 +155,11 @@ export default function AdminCategoriesPage() {
         return;
       }
 
-      setSuccessMessage('Catégorie supprimée avec succès.');
+      addNotification({ type: 'info', titre: 'Catégorie supprimée avec succès.', message: '' });
       await loadCategories();
     } catch (err) {
       console.error('Erreur suppression catégorie:', err);
-      setError('Erreur technique lors de la suppression.');
+      addNotification({ type: 'alerte', titre: 'Erreur technique lors de la suppression.', message: '' });
     } finally {
       setDeletingCategoryId(null);
     }
@@ -214,10 +214,9 @@ export default function AdminCategoriesPage() {
         </form>
       </section>
 
-      {(error || successMessage) && (
-        <div className="mb-4 rounded-xl border border-zinc-200 bg-white p-4">
-          {error && <p className="text-sm font-medium text-red-700">{error}</p>}
-          {successMessage && <p className="text-sm font-medium text-green-700">{successMessage}</p>}
+      {error && (
+        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 p-4">
+          <p className="text-sm font-medium text-red-700">{error}</p>
         </div>
       )}
 

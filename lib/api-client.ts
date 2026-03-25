@@ -241,7 +241,7 @@ class ApiClient {
   // Méthodes HTTP génériques
   async get<T>(url: string, params?: any): Promise<StandardApiResponse<T>> {
     const response: AxiosResponse<StandardApiResponse<T>> = await this.client.get(url, { params });
-    return response.data;
+    return response.data as StandardApiResponse<T>;
   }
 
   async post<T>(url: string, data?: any): Promise<StandardApiResponse<T>> {
@@ -260,8 +260,30 @@ class ApiClient {
   }
 
   async delete<T>(url: string): Promise<StandardApiResponse<T>> {
-    const response: AxiosResponse<StandardApiResponse<T>> = await this.client.delete(url);
-    return response.data;
+    const response: AxiosResponse<StandardApiResponse<T> | null | undefined> = await this.client.delete(url);
+    const payload = response.data as unknown;
+
+    if (
+      response.status === 204 ||
+      payload === undefined ||
+      payload === null ||
+      payload === '' ||
+      typeof payload !== 'object' ||
+      !('success' in payload)
+    ) {
+      return {
+        success: true,
+        code: 'RESOURCE_DELETED',
+        message: 'Ressource supprimée avec succès.',
+        messageKey: 'resource.deleted.success',
+        data: null,
+        timestamp: new Date().toISOString(),
+        errors: null,
+        pagination: null,
+      };
+    }
+
+    return payload as StandardApiResponse<T>;
   }
 
   // Upload de fichiers

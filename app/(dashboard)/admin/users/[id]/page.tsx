@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowLeft,
@@ -182,6 +182,7 @@ function getAmenities(property: Bien): string[] {
 
 export default function AdminUserDetailPage() {
   const { addNotification } = useNotifications();
+  const router = useRouter();
   const params = useParams<{ id: string }>();
   const userId = typeof params?.id === 'string' ? params.id : '';
 
@@ -198,6 +199,15 @@ export default function AdminUserDetailPage() {
   const [editLastName, setEditLastName] = useState('');
   const [editEmail, setEditEmail] = useState('');
   const [editRole, setEditRole] = useState<'locataire' | 'proprietaire' | 'superadmin'>('locataire');
+
+  const handleBackNavigation = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    router.push('/admin/users');
+  };
 
   useEffect(() => {
     if (!userId) {
@@ -352,7 +362,7 @@ export default function AdminUserDetailPage() {
 
       setUser((current) => (current ? { ...current, isActive: !current.isActive } : current));
       addNotification({
-        type: 'success',
+        type: 'info',
         titre: user.isActive ? 'Utilisateur désactivé' : 'Utilisateur réactivé',
         message: '',
       });
@@ -376,7 +386,6 @@ export default function AdminUserDetailPage() {
     const payload: UpdateUserData = {
       first_name: editFirstName.trim(),
       last_name: editLastName.trim(),
-      email: editEmail.trim().toLowerCase(),
       role: editRole,
     };
 
@@ -418,7 +427,7 @@ export default function AdminUserDetailPage() {
       setIsEditing(false);
 
       addNotification({
-        type: 'success',
+        type: 'info',
         titre: 'Utilisateur mis à jour',
         message: '',
       });
@@ -446,13 +455,14 @@ export default function AdminUserDetailPage() {
   if (error || !user) {
     return (
       <section className="space-y-4">
-        <Link
-          href="/admin/users"
+        <button
+          type="button"
+          onClick={handleBackNavigation}
           className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100"
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
           Retour aux utilisateurs
-        </Link>
+        </button>
         <article className="rounded-2xl border border-rose-200 bg-rose-50 p-5 shadow-sm">
           <p className="text-sm font-semibold text-rose-700">{error || 'Utilisateur introuvable'}</p>
         </article>
@@ -463,13 +473,14 @@ export default function AdminUserDetailPage() {
   return (
     <section className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link
-          href="/admin/users"
+        <button
+          type="button"
+          onClick={handleBackNavigation}
           className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100"
         >
           <ArrowLeft className="h-3.5 w-3.5" aria-hidden="true" />
           Retour aux utilisateurs
-        </Link>
+        </button>
         <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${user.isActive ? 'bg-emerald-50 text-emerald-700 ring-emerald-200' : 'bg-rose-50 text-rose-700 ring-rose-200'}`}>
           {user.isActive ? 'Compte actif' : 'Compte inactif'}
         </span>
@@ -518,9 +529,10 @@ export default function AdminUserDetailPage() {
               <input
                 type="email"
                 value={editEmail}
-                onChange={(event) => setEditEmail(event.target.value)}
-                className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900"
+                readOnly
+                className="mt-1 w-full cursor-not-allowed rounded-lg border border-zinc-200 bg-zinc-100 px-3 py-2 text-sm text-zinc-500"
               />
+              <p className="mt-1 text-[11px] text-zinc-500">Email non modifiable depuis cet écran.</p>
             </label>
             <label className="text-xs font-medium text-zinc-600 sm:col-span-2">
               Rôle backend
