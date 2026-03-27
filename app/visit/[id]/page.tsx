@@ -8,6 +8,9 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { ArrowLeft, CheckCircle2, Code, KeyRound, Phone, ShieldCheck, X } from 'lucide-react';
 
+import { Tour360Viewer } from '@/components/virtual-visits/Tour360Viewer';
+import { convertTourAssetToTourData } from '@/lib/tour360/adapters';
+
 export default function VirtualVisitPage() {
   const params = useParams<{ id: string }>();
   const searchParams = useSearchParams();
@@ -30,8 +33,18 @@ export default function VirtualVisitPage() {
   const [visitIdInput, setVisitIdInput] = useState(visitId);
 
   const linkedAccess = useMemo(() => accesses.find((item) => item.id === visitId), [accesses, visitId]);
-  const property = useMemo(() => mockProperties.find((item) => item.id === linkedAccess?.propertyId), [linkedAccess]);
+  const property = useMemo(() => mockProperties.find((item) => item.id === linkedAccess?.propertyId), [linkedAccess, accesses]);
   const propertyTour = useMemo(() => tours.find((item) => item.propertyId === linkedAccess?.propertyId), [tours, linkedAccess]);
+  
+  // Conversion pour le viewer
+  const tourData = useMemo(() => {
+    if (propertyTour) {
+      return convertTourAssetToTourData(propertyTour);
+    }
+    // Fallback data si pas de tour configuré
+    return null;
+  }, [propertyTour]);
+
   const inferredPropertyId =
     linkedAccess?.propertyId ?? propertyTour?.propertyId ?? tours[0]?.propertyId ?? mockProperties[0]?.id ?? '';
 
@@ -112,33 +125,22 @@ export default function VirtualVisitPage() {
   return (
     <div className="min-h-screen bg-zinc-50">
       <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-10">
-        <section className="relative overflow-hidden rounded-2xl border border-black/5 bg-black shadow-xl">
-          <iframe
-            title="Visite 360 simulée"
-            className="h-[70vh] w-full"
-            srcDoc={`
-              <html>
-                <body style="margin:0;overflow:hidden;background:#111;color:#fff;font-family:Arial, sans-serif;">
-                  <div style="position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(120deg,#222,#555);">
-                    <img src="${propertyTour?.fileUrl ?? property?.images?.[0] ?? '/window.svg'}" style="width:120%;max-width:none;opacity:.35;animation:pan 16s linear infinite alternate;" />
-                    <div style="position:absolute;text-align:center;">
-                      <h2 style="margin:0;font-size:28px;">Visite 360° simulée</h2>
-                      <p style="margin-top:8px;opacity:.85;">${property?.title ?? 'Bien immobilier'}</p>
-                    </div>
-                  </div>
-                  <style>
-                    @keyframes pan { from { transform: translateX(-8%); } to { transform: translateX(8%); } }
-                  </style>
-                </body>
-              </html>
-            `}
-          />
+        <section className="relative overflow-hidden rounded-2xl border border-black/5 bg-black shadow-xl h-[70vh]">
+          {tourData ? (
+            <Tour360Viewer tourData={tourData} className="animate-in fade-in duration-700" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-zinc-900 text-white">
+              <div className="text-center">
+                <p className="text-zinc-400">Image panoramique indisponible</p>
+              </div>
+            </div>
+          )}
 
-          <div className="pointer-events-none absolute inset-x-3 top-3 flex justify-between">
+          <div className="pointer-events-none absolute inset-x-3 top-3 flex justify-between z-10">
             <div className="rounded-xl bg-black/55 px-3 py-2 text-white backdrop-blur-sm">
               <p className="text-xs uppercase tracking-wide text-zinc-200">Visite virtuelle</p>
               <p className="text-sm font-semibold">{property?.title ?? 'Bien'}</p>
-              <p className="text-xs text-zinc-200">{property?.address.city ?? ''}</p>
+              <p className="text-xs text-zinc-200">{property?.address?.city ?? ''}</p>
             </div>
 
             <div className="rounded-xl bg-black/55 px-3 py-2 text-right text-white backdrop-blur-sm">

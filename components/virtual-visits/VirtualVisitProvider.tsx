@@ -2,19 +2,7 @@
 
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { mockProperties } from '@/data/properties';
-
-type MediaType = 'image360' | 'video360';
-
-type TourAsset = {
-  id: string;
-  propertyId: string;
-  fileName: string;
-  fileUrl: string;
-  mediaType: MediaType;
-  durationMinutes: number;
-  accessMode: 'code';
-  createdAt: string;
-};
+import { TourAsset, TourHotspot, TourAssetMetadata, MediaType } from '@/types/tour360';
 
 export type VirtualVisitAccess = {
   id: string;
