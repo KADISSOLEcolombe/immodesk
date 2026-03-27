@@ -174,8 +174,12 @@ export default function PropertyDetailClient({ id, role }: PropertyDetailPagePro
   const [error, setError] = useState<string | null>(null);
   const [isNotFound, setIsNotFound] = useState(false);
   const router = useRouter();
-  const { generateTemporaryAccess } = useVirtualVisits();
+  const { generateTemporaryAccess, tours } = useVirtualVisits();
   const viewerRole = normalizeRole(role);
+
+  const hasTour = useMemo(() => {
+    return property ? tours.some(t => t.propertyId === property.id) : false;
+  }, [property, tours]);
 
   useEffect(() => {
     const loadProperty = async () => {
@@ -418,16 +422,18 @@ export default function PropertyDetailClient({ id, role }: PropertyDetailPagePro
             {/* Actions */}
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
-                  <button 
-                    onClick={handleVirtualVisitClick}
-                    className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-200 p-3 text-sm font-medium text-zinc-700 transition hover:border-zinc-900 hover:bg-zinc-50 group"
-                  >
-                      <Video className="h-5 w-5 text-zinc-400 group-hover:text-zinc-900" />
-                      Visite Virtuelle
-                  </button>
+                  {hasTour && (
+                    <button 
+                      onClick={handleVirtualVisitClick}
+                      className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-200 p-3 text-sm font-medium text-zinc-700 transition hover:border-zinc-900 hover:bg-zinc-50 group"
+                    >
+                        <Video className="h-5 w-5 text-zinc-400 group-hover:text-zinc-900" />
+                        Visite Virtuelle
+                    </button>
+                  )}
                   <button 
                     onClick={handlePhysicalVisitClick}
-                    className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-200 p-3 text-sm font-medium text-zinc-700 transition hover:border-zinc-900 hover:bg-zinc-50 group"
+                    className={`flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-200 p-3 text-sm font-medium text-zinc-700 transition hover:border-zinc-900 hover:bg-zinc-50 group ${!hasTour ? 'col-span-2' : ''}`}
                   >
                       <CalendarDays className="h-5 w-5 text-zinc-400 group-hover:text-zinc-900" />
                       Contact visite

@@ -17,7 +17,7 @@ const adminNav = [
   { href: '/admin/payments', label: 'Paiements', icon: CreditCard, exact: false },
   { href: '/admin/comptabilite/depenses', label: 'Dépenses globales', icon: FileText, exact: false },
   { href: '/admin/notifications', label: 'Notifications', icon: Bell, exact: false },
-  // { href: '/admin/virtual-visits', label: 'Visites 360°', icon: Video, exact: false },
+  { href: '/admin/virtual-visits', label: 'Visites 360°', icon: Video, exact: false },
   // { href: '/admin/reports', label: 'Rapports', icon: FileText, exact: false },
   // { href: '/admin/settings', label: 'Configuration', icon: Settings2, exact: false },
   // { href: '/admin/stats', label: 'Statistiques', icon: BarChart3, exact: false },

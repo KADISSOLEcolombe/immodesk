@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Bell, Building2, CreditCard, FileText, TrendingUp, TrendingDown, Wallet, Loader2 } from 'lucide-react';
+import { Bell, Building2, CreditCard, FileText, TrendingUp, TrendingDown, Wallet, Loader2, Plus } from 'lucide-react';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
 import { PaiementsList } from '@/components/comptabilite/PaiementsList';
 import { DepensesList } from '@/components/comptabilite/DepensesList';
@@ -178,12 +178,21 @@ export default function OwnerOverviewPage() {
       <section className="mt-8 mb-8">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-base font-semibold text-zinc-900">Dernières dépenses</h2>
-          <Link 
-            href="/owner/comptabilite/depenses" 
-            className="text-sm text-blue-600 hover:underline"
-          >
-            Voir tout →
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link 
+              href="/owner/comptabilite/depenses?action=new" 
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 text-white rounded-lg text-xs font-medium hover:bg-zinc-800 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Nouvelle dépense
+            </Link>
+            <Link 
+              href="/owner/comptabilite/depenses" 
+              className="text-sm text-blue-600 hover:underline"
+            >
+              Voir tout →
+            </Link>
+          </div>
         </div>
         <div className="bg-white rounded-2xl border border-black/5 shadow-sm">
           <DepensesList limit={5} />
