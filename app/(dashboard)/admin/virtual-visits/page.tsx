@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import { Suspense, useEffect, useMemo, useState } from 'react';
-import { Building2, Loader2, Video, ExternalLink } from 'lucide-react';
-import { useVirtualVisits } from '@/components/virtual-visits/VirtualVisitProvider';
+import { Building2, Loader2, Video, ExternalLink, X } from 'lucide-react';
 import { PatrimoineService } from '@/lib/patrimoine-service';
+import { VirtualVisitService, VisiteConfig } from '@/lib/virtual-visit-service';
 import { normalizeMediaUrl } from '@/lib/utils';
 import { Bien } from '@/types/api';
 
@@ -71,39 +71,75 @@ function mapProperty(property: Bien): AdminProperty {
 }
 
 function AdminVirtualVisitsPageInner() {
-  const { tours } = useVirtualVisits();
   const [properties, setProperties] = useState<AdminProperty[]>([]);
+  const [visites, setVisites] = useState<VisiteConfig[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeEditorUrl, setActiveEditorUrl] = useState<string | null>(null);
 
-  const loadProperties = async () => {
+  const loadData = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await PatrimoineService.getBiens();
+      const [biensRes, visitesRes] = await Promise.all([
+        PatrimoineService.getBiens(),
+        VirtualVisitService.getVisites()
+      ]);
 
-      if (!response.success || !response.data) {
-        setError(response.message || 'Impossible de charger les biens.');
+      if (!biensRes.success || !biensRes.data) {
+        setError(biensRes.message || 'Impossible de charger les biens.');
         return;
       }
 
-      setProperties(response.data.map(mapProperty));
+      setProperties(biensRes.data.map(mapProperty));
+      
+      if (visitesRes.success && visitesRes.data) {
+        setVisites(visitesRes.data);
+      }
     } catch (err) {
-      console.error('Erreur chargement biens admin visite:', err);
-      setError('Erreur serveur lors du chargement des biens.');
+      console.error('Erreur chargement admin visite:', err);
+      setError('Erreur serveur lors du chargement des données.');
     } finally {
       setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadProperties();
-  }, []);
+  const handleDelete = async (visiteId: string) => {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer cette visite virtuelle ? Cette action est irréversible.')) {
+      return;
+    }
+    try {
+      const res = await VirtualVisitService.deleteVisite(visiteId);
+      if (res.success || res.code === 'RESOURCE_DELETED' || (!('success' in res))) {
+        setVisites(visites.filter(v => v.id !== visiteId));
+      } else {
+        alert(res.message || 'Erreur lors de la suppression.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erreur serveur lors de la suppression.');
+    }
+  };
 
-  const scheduledVirtualVisitPropertyIds = useMemo(
-    () => new Set(tours.map((tour) => tour.propertyId)),
-    [tours],
-  );
+  useEffect(() => {
+    // S'assurer que l'éditeur statique connaît l'URL de l'API
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api';
+    const formattedApiUrl = apiUrl.endsWith('/api') ? apiUrl : `${apiUrl}/api`;
+    localStorage.setItem('api_base_url', formattedApiUrl);
+
+    loadData();
+
+    // Listener pour fermer l'éditeur depuis l'iframe
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data === 'close-editor') {
+        setActiveEditorUrl(null);
+        loadData(); // Recharger les données pour voir les changements (brouillon/publié)
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
 
   return (
     <section className="space-y-6">
@@ -134,7 +170,15 @@ function AdminVirtualVisitsPageInner() {
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {properties.map((property) => {
-              const hasTour = scheduledVirtualVisitPropertyIds.has(property.id);
+              const visite = visites.find((v) => v.bien_id === property.id);
+              const hasTour = !!visite;
+              const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : '';
+              const tokenParam = token ? `&token=${token}` : '';
+              
+              const editorUrl = hasTour
+                ? `/tour/pages/editor.html?bienId=${property.id}&bienName=${encodeURIComponent(property.title)}&visitId=${visite.id}${tokenParam}`
+                : `/tour/pages/editor.html?bienId=${property.id}&bienName=${encodeURIComponent(property.title)}${tokenParam}`;
+
               return (
                 <div
                   key={property.id}
@@ -159,9 +203,15 @@ function AdminVirtualVisitsPageInner() {
                           {statusLabel[property.status] || property.status}
                         </span>
                         {hasTour ? (
-                          <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
-                            ✓ Visite configurée
-                          </span>
+                          visite.actif ? (
+                            <span className="inline-flex rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-medium text-emerald-700">
+                              ✓ Visite publiée
+                            </span>
+                          ) : (
+                            <span className="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                              En brouillon
+                            </span>
+                          )
                         ) : (
                           <span className="inline-flex rounded-full bg-zinc-200 px-2 py-0.5 text-[11px] font-medium text-zinc-600">
                             Aucune visite
@@ -170,15 +220,29 @@ function AdminVirtualVisitsPageInner() {
                       </div>
                     </div>
                     
-                    <a
-                      href={`/tour/pages/editor.html`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-                      {hasTour ? 'Modifier la visite' : 'Créer une visite'}
-                    </a>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => setActiveEditorUrl(editorUrl)}
+                        className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all ${
+                          hasTour 
+                            ? 'bg-zinc-900 text-white shadow-sm hover:bg-zinc-800' 
+                            : 'bg-emerald-600 text-white shadow-sm hover:bg-emerald-700'
+                        }`}
+                      >
+                        <Video className="h-4 w-4" />
+                        {hasTour ? "Modifier la visite" : 'Créer une visite'}
+                      </button>
+                      
+                      {hasTour && (
+                        <button
+                          onClick={() => handleDelete(visite.id)}
+                          className="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
+                        >
+                          <X className="h-4 w-4" />
+                          Supprimer la visite
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
@@ -186,6 +250,31 @@ function AdminVirtualVisitsPageInner() {
           </div>
         )}
       </article>
+
+      {/* Overlay Éditeur Iframe */}
+      {activeEditorUrl && (
+        <div className="fixed inset-0 z-[100] flex flex-col bg-black">
+          <div className="flex h-12 items-center justify-between border-b border-white/10 bg-zinc-900 px-4 text-white">
+            <span className="text-sm font-medium">Éditeur 360° — ImmoDesk</span>
+            <button 
+              onClick={() => {
+                if (confirm('Êtes-vous sûr de vouloir fermer l\'éditeur ? Les modifications non enregistrées seront perdues.')) {
+                  setActiveEditorUrl(null);
+                  loadData();
+                }
+              }}
+              className="rounded-lg p-2 hover:bg-white/10"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <iframe 
+            src={activeEditorUrl} 
+            className="h-full w-full border-none"
+            title="Éditeur 360"
+          />
+        </div>
+      )}
     </section>
   );
 }

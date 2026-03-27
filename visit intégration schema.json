@@ -1,0 +1,2430 @@
+{
+    
+    "/api/visites/mon-acces/": {
+      "get": {
+        "operationId": "visites_mon_acces_retrieve",
+        "description": "R\u00e9serv\u00e9 aux visiteurs \u00e9ph\u00e9m\u00e8res authentifi\u00e9s.\n\nHeader requis : `Authorization: Visiteur <token>`\n\nRetourne la structure JSON compl\u00e8te de la visite : `name`, `initialScene`, `scenes` (avec images et hotspots).\n\nCe JSON est con\u00e7u pour \u00eatre consomm\u00e9 directement par le viewer 360\u00b0 du frontend.",
+        "summary": "R\u00e9cup\u00e9rer le JSON complet de la visite",
+        "tags": [
+          "Visites \u2014 Acc\u00e8s Visiteur"
+        ],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "ConfigVisiteR\u00e9cup\u00e9r\u00e9e": {
+                    "value": {
+                      "success": true,
+                      "code": "RESOURCE_FOUND",
+                      "message": "Configuration de la visite r\u00e9cup\u00e9r\u00e9e avec succ\u00e8s.",
+                      "messageKey": "resource.found.success",
+                      "data": {
+                        "visite_id": "uuid-visite",
+                        "bien_adresse": "12 Rue des Palmiers, Lom\u00e9",
+                        "bien_id": "uuid-bien",
+                        "name": "Appartement T3 \u2014 Rue des Palmiers",
+                        "initialScene": "entree",
+                        "scenes": {
+                          "entree": {
+                            "name": "Entr\u00e9e",
+                            "image": "https://cdn.example.com/tours/entree-360.jpg",
+                            "hotspots": [
+                              {
+                                "type": "navigate",
+                                "yaw": 30.0,
+                                "pitch": -5.0,
+                                "target": "salon",
+                                "label": "Vers le salon"
+                              }
+                            ]
+                          },
+                          "salon": {
+                            "name": "Salon",
+                            "image": "https://cdn.example.com/tours/salon-360.jpg",
+                            "hotspots": [
+                              {
+                                "type": "navigate",
+                                "yaw": -45.0,
+                                "pitch": -5.0,
+                                "target": "entree",
+                                "label": "Vers l'entr\u00e9e"
+                              },
+                              {
+                                "type": "info",
+                                "yaw": 10.0,
+                                "pitch": 5.0,
+                                "title": "Baie vitr\u00e9e",
+                                "description": "Double vitrage."
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Config visite r\u00e9cup\u00e9r\u00e9e"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "Acc\u00e8sInvalideOuExpir\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "Acc\u00e8s invalide ou expir\u00e9.",
+                      "messageKey": "resource.not_found.success",
+                      "data": null,
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "RESOURCE_NOT_FOUND",
+                          "message": "Le compte visiteur n'a pas \u00e9t\u00e9 trouv\u00e9 ou a expir\u00e9.",
+                          "messageKey": "resource.not_found.success",
+                          "details": {
+                            "token": "VIS-A3K2-9XPL"
+                          }
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s invalide ou expir\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "Acc\u00e8sInvalideOuExpir\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "Acc\u00e8s invalide ou expir\u00e9.",
+                      "messageKey": "resource.not_found.success",
+                      "data": null,
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "RESOURCE_NOT_FOUND",
+                          "message": "Le compte visiteur n'a pas \u00e9t\u00e9 trouv\u00e9 ou a expir\u00e9.",
+                          "messageKey": "resource.not_found.success",
+                          "details": {
+                            "token": "VIS-A3K2-9XPL"
+                          }
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s invalide ou expir\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "ErreurServeur": {
+                    "value": {
+                      "success": false,
+                      "code": "SYSTEM_INTERNAL_ERROR",
+                      "message": "Une erreur interne est survenue. Veuillez r\u00e9essayer.",
+                      "messageKey": "system.internal.error",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "SYSTEM_INTERNAL_ERROR",
+                          "message": "Une erreur interne est survenue.",
+                          "messageKey": "system.internal.error",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Erreur serveur"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/visites/": {
+      "get": {
+        "operationId": "visites_retrieve",
+        "description": "Le propri\u00e9taire voit uniquement les configs de ses biens. L'admin voit toutes les configs.",
+        "summary": "Lister les configurations de visites",
+        "tags": [
+          "Visites \u2014 Configuration"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigListSerializerResponse"
+                },
+                "examples": {
+                  "ListeDesConfigurations": {
+                    "value": {
+                      "success": true,
+                      "code": "LIST_RETRIEVED",
+                      "message": "Configurations de visites r\u00e9cup\u00e9r\u00e9es.",
+                      "messageKey": "resource.list.retrieved",
+                      "data": [
+                        {
+                          "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                          "bien_id": "uuid-bien",
+                          "bien_adresse": "12 Rue des Palmiers, Lom\u00e9",
+                          "prix": "5000.00",
+                          "actif": true,
+                          "nb_scenes": 3,
+                          "nb_acces_valides": 12,
+                          "created_at": "2026-03-19T10:00:00.000000Z"
+                        },
+                        {
+                          "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                          "bien_id": "uuid-bien",
+                          "bien_adresse": "12 Rue des Palmiers, Lom\u00e9",
+                          "prix": "5000.00",
+                          "actif": false,
+                          "nb_scenes": 3,
+                          "nb_acces_valides": 0,
+                          "created_at": "2026-03-19T10:00:00.000000Z"
+                        }
+                      ],
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": null,
+                      "pagination": {
+                        "current_page": 1,
+                        "total_pages": 1,
+                        "total_count": 1,
+                        "page_size": 20,
+                        "has_next": false,
+                        "has_previous": false,
+                        "next_page": null,
+                        "previous_page": null
+                      },
+                      "userContext": null
+                    },
+                    "summary": "Liste des configurations"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigListSerializerResponse"
+                },
+                "examples": {
+                  "BearerTokenAbsent": {
+                    "value": {
+                      "success": false,
+                      "code": "AUTH_TOKEN_MISSING",
+                      "message": "Authentification requise.",
+                      "messageKey": "auth.token.missing",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "AUTH_TOKEN_MISSING",
+                          "message": "Authentication credentials were not provided.",
+                          "messageKey": "auth.token.missing",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Bearer token absent",
+                    "description": "Le header Authorization est absent."
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigListSerializerResponse"
+                },
+                "examples": {
+                  "Acc\u00e8sRefus\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "PERMISSION_DENIED",
+                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
+                      "messageKey": "permission.denied",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "PERMISSION_DENIED",
+                          "message": "You do not have permission to perform this action.",
+                          "messageKey": "permission.denied",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s refus\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
+      "post": {
+        "operationId": "visites_create",
+        "description": "R\u00e9serv\u00e9 au Super Admin. Le champ `config` doit respecter le format JSON ImmoDesk : `name`, `initialScene`, `scenes` (avec hotspots `navigate` et `info`). Un bien ne peut avoir qu'une seule configuration de visite.",
+        "summary": "Cr\u00e9er une configuration de visite",
+        "tags": [
+          "Visites \u2014 Configuration"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VisiteConfigCreateRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/VisiteConfigCreateRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/VisiteConfigCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "VisiteCr\u00e9\u00e9e": {
+                    "value": {
+                      "success": true,
+                      "code": "RESOURCE_CREATED",
+                      "message": "Configuration de visite cr\u00e9\u00e9e avec succ\u00e8s.",
+                      "messageKey": "resource.created.success",
+                      "data": {
+                        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                        "bien_id": "uuid-bien",
+                        "bien_adresse": "12 Rue des Palmiers, Lom\u00e9",
+                        "bien_statut": "vacant",
+                        "categorie_nom": "Appartement",
+                        "config": {
+                          "name": "Appartement T3 \u2014 Rue des Palmiers",
+                          "initialScene": "entree",
+                          "scenes": {
+                            "entree": {
+                              "name": "Entr\u00e9e",
+                              "image": "https://cdn.example.com/tours/entree-360.jpg",
+                              "hotspots": [
+                                {
+                                  "type": "navigate",
+                                  "yaw": 30.0,
+                                  "pitch": -5.0,
+                                  "target": "salon",
+                                  "label": "Vers le salon"
+                                },
+                                {
+                                  "type": "info",
+                                  "yaw": 160.0,
+                                  "pitch": 8.0,
+                                  "title": "Placard",
+                                  "description": "Placard 2m40"
+                                }
+                              ]
+                            },
+                            "salon": {
+                              "name": "Salon",
+                              "image": "https://cdn.example.com/tours/salon-360.jpg",
+                              "hotspots": [
+                                {
+                                  "type": "navigate",
+                                  "yaw": -45.0,
+                                  "pitch": -5.0,
+                                  "target": "entree",
+                                  "label": "Vers l'entr\u00e9e"
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        "prix": "5000.00",
+                        "actif": true,
+                        "created_at": "2026-03-19T10:00:00.000000Z",
+                        "updated_at": "2026-03-19T10:00:00.000000Z"
+                      },
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Visite cr\u00e9\u00e9e"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "RessourceIntrouvable": {
+                    "value": {
+                      "success": false,
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "Ressource introuvable.",
+                      "messageKey": "resource.not_found",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "RESOURCE_NOT_FOUND",
+                          "message": "Not found.",
+                          "messageKey": "resource.not_found",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Ressource introuvable"
+                  },
+                  "ChampRequisManquant": {
+                    "value": {
+                      "success": false,
+                      "code": "VALIDATION_REQUIRED_FIELD",
+                      "message": "Donn\u00e9es invalides.",
+                      "messageKey": "validation.required_field",
+                      "data": null,
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": [
+                        {
+                          "field": "bien",
+                          "code": "VALIDATION_REQUIRED_FIELD",
+                          "message": "Le bien est requis.",
+                          "messageKey": "validation.required_field",
+                          "details": null
+                        },
+                        {
+                          "field": "config",
+                          "code": "VALIDATION_REQUIRED_FIELD",
+                          "message": "La configuration de la visite est requise.",
+                          "messageKey": "validation.required_field",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Champ requis manquant"
+                  },
+                  "VisiteD\u00e9j\u00e0Cr\u00e9\u00e9e": {
+                    "value": {
+                      "success": false,
+                      "code": "RESOURCE_CREATION_FAILED",
+                      "message": "Ce bien poss\u00e8de d\u00e9j\u00e0 une configuration de visite.",
+                      "messageKey": "resource.creation.failed",
+                      "data": null,
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "RESOURCE_CREATION_FAILED",
+                          "message": "Ce bien poss\u00e8de d\u00e9j\u00e0 une configuration de visite.",
+                          "messageKey": "resource.creation.failed",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Visite d\u00e9j\u00e0 cr\u00e9\u00e9e"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "Acc\u00e8sRefus\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "PERMISSION_DENIED",
+                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
+                      "messageKey": "permission.denied",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "PERMISSION_DENIED",
+                          "message": "You do not have permission to perform this action.",
+                          "messageKey": "permission.denied",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s refus\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/visites/comptes-ephemeres/": {
+      "get": {
+        "operationId": "visites_comptes_ephemeres_retrieve",
+        "description": "Super Admin uniquement. Liste tous les comptes \u00e9ph\u00e9m\u00e8res cr\u00e9\u00e9s sur la plateforme.",
+        "summary": "Tous les comptes \u00e9ph\u00e9m\u00e8res",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "date_debut",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Date de d\u00e9but"
+          },
+          {
+            "in": "query",
+            "name": "date_fin",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Date de fin"
+          }
+        ],
+        "tags": [
+          "Visites \u2014 Administration"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardCompteEphemereSerializerResponse"
+                },
+                "examples": {
+                  "ListeDesComptes\u00c9ph\u00e9m\u00e8res": {
+                    "value": {
+                      "success": true,
+                      "code": "LIST_RETRIEVED",
+                      "message": "Comptes \u00e9ph\u00e9m\u00e8res r\u00e9cup\u00e9r\u00e9s avec succ\u00e8s.",
+                      "messageKey": "resource.list.retrieved",
+                      "data": [
+                        {
+                          "id": "bdbc1527-522d-4778-adc6-a6b980af97e8",
+                          "identifiant": "VIS-J3LL-62E6",
+                          "email_visiteur": "visiteur2@test.com",
+                          "visite_nom": "Appartement T3 \u2014 Lom\u00e9",
+                          "date_creation": "2026-03-20T18:30:20.545852Z",
+                          "date_expiration": "2026-03-21T18:30:20.545314Z",
+                          "utilise": false,
+                          "date_utilisation": null,
+                          "est_expire": false,
+                          "est_valide": true,
+                          "is_deleted": false
+                        },
+                        {
+                          "id": "05268e21-e6e8-43f2-8e0d-4886924ac65b",
+                          "identifiant": "VIS-JKPU-EI3W",
+                          "email_visiteur": "visiteur@test.com",
+                          "visite_nom": "Appartement T3 \u2014 Lom\u00e9",
+                          "date_creation": "2026-03-20T18:28:07.689310Z",
+                          "date_expiration": "2026-03-21T18:28:07.687767Z",
+                          "utilise": true,
+                          "date_utilisation": "2026-03-20T18:36:01.688180Z",
+                          "est_expire": false,
+                          "est_valide": false,
+                          "is_deleted": false
+                        }
+                      ],
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Liste des comptes \u00e9ph\u00e9m\u00e8res"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardCompteEphemereSerializerResponse"
+                },
+                "examples": {
+                  "Acc\u00e8sRefus\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "PERMISSION_DENIED",
+                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
+                      "messageKey": "permission.denied",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "PERMISSION_DENIED",
+                          "message": "You do not have permission to perform this action.",
+                          "messageKey": "permission.denied",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s refus\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/visites/transactions/": {
+      "get": {
+        "operationId": "visites_transactions_retrieve",
+        "description": "Super Admin uniquement. Liste toutes les transactions de paiement effectu\u00e9es sur la plateforme.",
+        "summary": "Toutes les transactions de paiement",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "date_debut",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Date de d\u00e9but"
+          },
+          {
+            "in": "query",
+            "name": "date_fin",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Date de fin"
+          }
+        ],
+        "tags": [
+          "Visites \u2014 Administration"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardTransactionVisiteSerializerResponse"
+                },
+                "examples": {
+                  "ListeDesTransactionsDePaiement": {
+                    "value": {
+                      "success": true,
+                      "code": "LIST_RETRIEVED",
+                      "message": "Transactions de paiement r\u00e9cup\u00e9r\u00e9es avec succ\u00e8s.",
+                      "messageKey": "resource.list.retrieved",
+                      "data": [
+                        {
+                          "id": "00f90bf4-7560-4736-9389-8f5b3d66be1e",
+                          "reference": "VIS-2026-LV43",
+                          "visite_nom": "Appartement T3 \u2014 Lom\u00e9",
+                          "email_visiteur": "visiteur2@test.com",
+                          "nom_visiteur": "Marie Ama",
+                          "montant": "7502.00",
+                          "moyen_paiement": "carte_bancaire",
+                          "statut": "valide",
+                          "date_initiation": "2026-03-20T18:30:20.530314Z",
+                          "date_validation": "2026-03-20T18:30:20.541232Z",
+                          "message_retour": "Paiement valid\u00e9 par le simulateur.",
+                          "derniers_chiffres_carte": "1111"
+                        },
+                        {
+                          "id": "2b5be535-7834-4577-be6f-7424b85df5da",
+                          "reference": "VIS-2026-58F2",
+                          "visite_nom": "Appartement T3 \u2014 Lom\u00e9",
+                          "email_visiteur": "visiteur@test.com",
+                          "nom_visiteur": "Hacker Visit",
+                          "montant": "7502.00",
+                          "moyen_paiement": "mixx_by_yas",
+                          "statut": "valide",
+                          "date_initiation": "2026-03-20T18:28:07.612882Z",
+                          "date_validation": "2026-03-20T18:28:07.677718Z",
+                          "message_retour": "Paiement valid\u00e9 par le simulateur.",
+                          "derniers_chiffres_carte": null
+                        }
+                      ],
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Liste des transactions de paiement"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardTransactionVisiteSerializerResponse"
+                },
+                "examples": {
+                  "Acc\u00e8sRefus\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "PERMISSION_DENIED",
+                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
+                      "messageKey": "permission.denied",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "PERMISSION_DENIED",
+                          "message": "You do not have permission to perform this action.",
+                          "messageKey": "permission.denied",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s refus\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/visites/connexion/": {
+      "post": {
+        "operationId": "visites_connexion_create",
+        "description": "Sans authentification. V\u00e9rifie l'identifiant et le code re\u00e7us par mail.\n\nEn cas de succ\u00e8s, retourne un **token Visiteur** \u00e0 utiliser dans le header : `Authorization: Visiteur <token>`\n\nLe compte est marqu\u00e9 comme utilis\u00e9 apr\u00e8s cette connexion (usage unique). Le token est valide jusqu'\u00e0 l'expiration du compte ('maximu'm 24h).",
+        "summary": "Connexion visiteur avec identifiant + code",
+        "tags": [
+          "Visites \u2014 Public"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnexionVisiteRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnexionVisiteRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnexionVisiteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardConnexionVisiteSerializerResponse"
+                },
+                "examples": {
+                  "ConnexionR\u00e9ussie": {
+                    "value": {
+                      "success": true,
+                      "code": "OPERATION_SUCCESS",
+                      "message": "Connexion r\u00e9ussie. Bienvenue dans votre visite virtuelle.",
+                      "messageKey": "operation.success",
+                      "data": {
+                        "token": "ImNoYW5nZWRfdG9rZW5faGVyZQ:1pXKzM:abc123...",
+                        "token_type": "Visiteur",
+                        "visite": {
+                          "id": "uuid-visite",
+                          "nom": "Appartement T3 \u2014 Rue des Palmiers",
+                          "bien_adresse": "12 Rue des Palmiers, Lom\u00e9"
+                        },
+                        "expire_le": "2026-03-20T10:00:00Z",
+                        "instructions": "Utilisez ce token dans le header : Authorization: Visiteur <token>"
+                      },
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Connexion r\u00e9ussie"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardConnexionVisiteSerializerResponse"
+                },
+                "examples": {
+                  "ChampManquant": {
+                    "value": {
+                      "success": false,
+                      "code": "VALIDATION_REQUIRED_FIELD",
+                      "message": "Identifiant et code requis.",
+                      "messageKey": "validation.required_field",
+                      "data": null,
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": [
+                        {
+                          "field": "identifiant",
+                          "code": "VALIDATION_REQUIRED_FIELD",
+                          "message": "Ce champ est requis.",
+                          "messageKey": "validation.required_field",
+                          "details": null
+                        },
+                        {
+                          "field": "code",
+                          "code": "VALIDATION_REQUIRED_FIELD",
+                          "message": "Ce champ est requis.",
+                          "messageKey": "validation.required_field",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Champ manquant"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardConnexionVisiteSerializerResponse"
+                },
+                "examples": {
+                  "IdentifiantsInvalides": {
+                    "value": {
+                      "success": false,
+                      "code": "BUSINESS_VISITE_INVALID_CREDENTIALS",
+                      "message": "Identifiant ou code d'acc\u00e8s invalide.",
+                      "messageKey": "business.visite.invalid_credentials",
+                      "data": null,
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "BUSINESS_VISITE_INVALID_CREDENTIALS",
+                          "message": "Les identifiants fournis ne correspondent \u00e0 aucun acc\u00e8s valide.",
+                          "messageKey": "business.visite.invalid_credentials",
+                          "details": {
+                            "identifiant": "VIS-A3K2-9XPL",
+                            "code": "483921"
+                          }
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Identifiants invalides"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardConnexionVisiteSerializerResponse"
+                },
+                "examples": {
+                  "Acc\u00e8sD\u00e9j\u00e0Utilis\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "BUSINESS_VISITE_ALREADY_USED",
+                      "message": "Cet acc\u00e8s a d\u00e9j\u00e0 \u00e9t\u00e9 utilis\u00e9. Les acc\u00e8s sont \u00e0 usage unique.",
+                      "messageKey": "business.visite.already_used",
+                      "data": null,
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "BUSINESS_VISITE_ALREADY_USED",
+                          "message": "Cet acc\u00e8s a d\u00e9j\u00e0 \u00e9t\u00e9 consomm\u00e9.",
+                          "messageKey": "business.visite.already_used",
+                          "details": {
+                            "date_utilisation": "2026-03-19T12:30:00Z"
+                          }
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s d\u00e9j\u00e0 utilis\u00e9"
+                  },
+                  "Acc\u00e8sExpir\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "BUSINESS_VISITE_EXPIRED",
+                      "message": "Votre acc\u00e8s a expir\u00e9. La dur\u00e9e de validit\u00e9 est de 24h.",
+                      "messageKey": "business.visite.expired",
+                      "data": null,
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "BUSINESS_VISITE_EXPIRED",
+                          "message": "Expir\u00e9 le 19/03/2026 \u00e0 12:30.",
+                          "messageKey": "business.visite.expired",
+                          "details": {
+                            "date_expiration": "2026-03-19T12:30:00Z"
+                          }
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s expir\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/visites/historique/": {
+      "get": {
+        "operationId": "visites_historique_retrieve",
+        "description": "Super Admin uniquement. Liste toutes les traces de visites sur la plateforme, avec filtres optionnels par p\u00e9riode (`date_debut`, `date_fin` au format `YYYY-MM-DD`) et par statut (`aboutie=true/false`).",
+        "summary": "Historique global de toutes les visites",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "aboutie",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filtrer par statut : true ou false"
+          },
+          {
+            "in": "query",
+            "name": "date_debut",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Date de d\u00e9but (YYYY-MM-DD)"
+          },
+          {
+            "in": "query",
+            "name": "date_fin",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Date de fin (YYYY-MM-DD)"
+          }
+        ],
+        "tags": [
+          "Visites \u2014 Administration"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardTraceVisiteSerializerResponse"
+                },
+                "examples": {
+                  "HistoriqueDesVisites": {
+                    "value": {
+                      "success": true,
+                      "code": "LIST_RETRIEVED",
+                      "message": "Historique des visites r\u00e9cup\u00e9r\u00e9.",
+                      "messageKey": "resource.list.retrieved",
+                      "data": [
+                        {
+                          "id": "uuid-trace",
+                          "visite_id": "uuid-visite",
+                          "visite_nom": "Appartement T3 \u2014 Lom\u00e9",
+                          "bien_adresse": "12 Rue des Palmiers, Lom\u00e9",
+                          "email_visiteur": "visiteur@example.com",
+                          "date_acces": "2026-03-19T14:30:00Z",
+                          "aboutie": true
+                        },
+                        {
+                          "id": "uuid-trace-2",
+                          "visite_id": "uuid-visite",
+                          "visite_nom": "Appartement T3 \u2014 Lom\u00e9",
+                          "bien_adresse": "12 Rue des Palmiers, Lom\u00e9",
+                          "email_visiteur": "autre@example.com",
+                          "date_acces": "2026-03-18T09:15:00Z",
+                          "aboutie": false
+                        }
+                      ],
+                      "timestamp": "2026-03-19T10:00:00Z",
+                      "errors": null,
+                      "pagination": {
+                        "current_page": 1,
+                        "total_pages": 1,
+                        "total_count": 2,
+                        "page_size": 20,
+                        "has_next": false,
+                        "has_previous": false,
+                        "next_page": null,
+                        "previous_page": null
+                      },
+                      "userContext": null
+                    },
+                    "summary": "Historique des visites"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardTraceVisiteSerializerResponse"
+                },
+                "examples": {
+                  "Acc\u00e8sRefus\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "PERMISSION_DENIED",
+                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
+                      "messageKey": "permission.denied",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "PERMISSION_DENIED",
+                          "message": "You do not have permission to perform this action.",
+                          "messageKey": "permission.denied",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s refus\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/visites/historique/bien/{bien_id}/": {
+      "get": {
+        "operationId": "visites_historique_bien_retrieve",
+        "description": "Propri\u00e9taire (ses biens uniquement) ou Super Admin. Filtres optionnels : `date_debut`, `date_fin` (YYYY-MM-DD), `aboutie` (true/false).",
+        "summary": "Historique des visites d'un bien",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "aboutie",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filtrer par statut : true ou false"
+          },
+          {
+            "in": "path",
+            "name": "bien_id",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "date_debut",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Date de d\u00e9but (YYYY-MM-DD)"
+          },
+          {
+            "in": "query",
+            "name": "date_fin",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Date de fin (YYYY-MM-DD)"
+          }
+        ],
+        "tags": [
+          "Visites \u2014 Administration"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardTraceVisiteSerializerResponse"
+                },
+                "examples": {
+                  "HistoriqueDesVisites": {
+                    "value": {
+                      "success": true,
+                      "code": "LIST_RETRIEVED",
+                      "message": "Historique des visites r\u00e9cup\u00e9r\u00e9.",
+                      "messageKey": "resource.list.retrieved",
+                      "data": [
+                        {
+                          "id": "uuid-trace",
+                          "visite_id": "uuid-visite",
+                          "visite_nom": "Appartement T3 \u2014 Lom\u00e9",
+                          "bien_adresse": "12 Rue des Palmiers, Lom\u00e9",
+                          "email_visiteur": "visiteur@example.com",
+                          "date_acces": "2026-03-19T14:30:00Z",
+                          "aboutie": true
+                        },
+                        {
+                          "id": "uuid-trace-2",
+                          "visite_id": "uuid-visite",
+                          "visite_nom": "Appartement T3 \u2014 Lom\u00e9",
+                          "bien_adresse": "12 Rue des Palmiers, Lom\u00e9",
+                          "email_visiteur": "autre@example.com",
+                          "date_acces": "2026-03-18T09:15:00Z",
+                          "aboutie": false
+                        }
+                      ],
+                      "timestamp": "2026-03-19T10:00:00Z",
+                      "errors": null,
+                      "pagination": {
+                        "current_page": 1,
+                        "total_pages": 1,
+                        "total_count": 2,
+                        "page_size": 20,
+                        "has_next": false,
+                        "has_previous": false,
+                        "next_page": null,
+                        "previous_page": null
+                      },
+                      "userContext": null
+                    },
+                    "summary": "Historique des visites"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardTraceVisiteSerializerResponse"
+                },
+                "examples": {
+                  "Acc\u00e8sRefus\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "PERMISSION_DENIED",
+                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
+                      "messageKey": "permission.denied",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "PERMISSION_DENIED",
+                          "message": "You do not have permission to perform this action.",
+                          "messageKey": "permission.denied",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s refus\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardTraceVisiteSerializerResponse"
+                },
+                "examples": {
+                  "RessourceIntrouvable": {
+                    "value": {
+                      "success": false,
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "Ressource introuvable.",
+                      "messageKey": "resource.not_found",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "RESOURCE_NOT_FOUND",
+                          "message": "Not found.",
+                          "messageKey": "resource.not_found",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Ressource introuvable"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/visites/public/": {
+      "get": {
+        "operationId": "visites_public_retrieve",
+        "description": "Sans authentification. Retourne les visites actives sans le JSON complet (aper\u00e7u uniquement). Les images base64 ne sont pas incluses dans cet aper\u00e7u.",
+        "summary": "Lister les visites virtuelles disponibles",
+        "tags": [
+          "Visites \u2014 Public"
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisitePubliqueSerializerResponse"
+                },
+                "examples": {
+                  "ListePubliqueDesVisites": {
+                    "value": {
+                      "success": true,
+                      "code": "LIST_RETRIEVED",
+                      "message": "Visites virtuelles disponibles.",
+                      "messageKey": "resource.list.retrieved",
+                      "data": [
+                        {
+                          "id": "uuid-visite",
+                          "bien_id": "uuid-bien",
+                          "bien_adresse": "12 Rue des Palmiers, Lom\u00e9",
+                          "bien_statut": "vacant",
+                          "categorie_nom": "Appartement",
+                          "nom_visite": "Appartement T3 \u2014 Rue des Palmiers",
+                          "prix": "5000.00",
+                          "nb_scenes": 5,
+                          "apercu_image": "https://cdn.example.com/tours/entree-360.jpg"
+                        }
+                      ],
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Liste publique des visites"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisitePubliqueSerializerResponse"
+                },
+                "examples": {
+                  "RessourceIntrouvable": {
+                    "value": {
+                      "success": false,
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "Ressource introuvable.",
+                      "messageKey": "resource.not_found",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "RESOURCE_NOT_FOUND",
+                          "message": "Not found.",
+                          "messageKey": "resource.not_found",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Ressource introuvable"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/visites/{id}/": {
+      "put": {
+        "operationId": "visites_update",
+        "description": "R\u00e9serv\u00e9 au Super Admin. Permet de mettre \u00e0 jour le JSON de la visite, le prix ou le statut actif/inactif.",
+        "summary": "Modifier une configuration de visite",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "A UUID string identifying this Configuration de visite virtuelle.",
+            "required": true
+          }
+        ],
+        "tags": [
+          "Visites \u2014 Configuration"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VisiteConfigUpdateRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/VisiteConfigUpdateRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/VisiteConfigUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "ConfigurationDeVisiteModifi\u00e9e": {
+                    "value": {
+                      "success": true,
+                      "code": "RESOURCE_UPDATED",
+                      "message": "Configuration de visite mise \u00e0 jour.",
+                      "messageKey": "resource.updated.success",
+                      "data": {
+                        "config": {
+                          "name": "string",
+                          "initialScene": "string",
+                          "scenes": {
+                            "additionalProp1": {
+                              "name": "string",
+                              "image": "string",
+                              "hotspots": [
+                                {
+                                  "type": "navigate",
+                                  "yaw": 0,
+                                  "pitch": 0,
+                                  "target": "string",
+                                  "label": "string",
+                                  "title": "string",
+                                  "description": "string"
+                                }
+                              ]
+                            },
+                            "additionalProp2": {
+                              "name": "string",
+                              "image": "string",
+                              "hotspots": [
+                                {
+                                  "type": "navigate",
+                                  "yaw": 0,
+                                  "pitch": 0,
+                                  "target": "string",
+                                  "label": "string",
+                                  "title": "string",
+                                  "description": "string"
+                                }
+                              ]
+                            },
+                            "additionalProp3": {
+                              "name": "string",
+                              "image": "string",
+                              "hotspots": [
+                                {
+                                  "type": "navigate",
+                                  "yaw": 0,
+                                  "pitch": 0,
+                                  "target": "string",
+                                  "label": "string",
+                                  "title": "string",
+                                  "description": "string"
+                                }
+                              ]
+                            }
+                          }
+                        },
+                        "prix": "094955.",
+                        "actif": true
+                      },
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Configuration de visite modifi\u00e9e"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "ChampRequisManquant": {
+                    "value": {
+                      "success": false,
+                      "code": "VALIDATION_REQUIRED_FIELD",
+                      "message": "Donn\u00e9es invalides.",
+                      "messageKey": "validation.required_field",
+                      "data": null,
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": [
+                        {
+                          "field": "bien",
+                          "code": "VALIDATION_REQUIRED_FIELD",
+                          "message": "Le bien est requis.",
+                          "messageKey": "validation.required_field",
+                          "details": null
+                        },
+                        {
+                          "field": "config",
+                          "code": "VALIDATION_REQUIRED_FIELD",
+                          "message": "La configuration de la visite est requise.",
+                          "messageKey": "validation.required_field",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Champ requis manquant"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "Acc\u00e8sRefus\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "PERMISSION_DENIED",
+                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
+                      "messageKey": "permission.denied",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "PERMISSION_DENIED",
+                          "message": "You do not have permission to perform this action.",
+                          "messageKey": "permission.denied",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s refus\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "RessourceIntrouvable": {
+                    "value": {
+                      "success": false,
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "Ressource introuvable.",
+                      "messageKey": "resource.not_found",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "RESOURCE_NOT_FOUND",
+                          "message": "Not found.",
+                          "messageKey": "resource.not_found",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Ressource introuvable"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "operationId": "visites_destroy",
+        "description": "R\u00e9serv\u00e9 au Super Admin. Positionne `actif=False` \u2014 les donn\u00e9es historiques (transactions, comptes) sont conserv\u00e9es.",
+        "summary": "D\u00e9sactiver une configuration de visite",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "A UUID string identifying this Configuration de visite virtuelle.",
+            "required": true
+          }
+        ],
+        "tags": [
+          "Visites \u2014 Configuration"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "ConfigurationDeVisiteD\u00e9sactiv\u00e9e": {
+                    "value": {
+                      "success": true,
+                      "code": "RESOURCE_DELETED",
+                      "message": "Configuration de visite d\u00e9sactiv\u00e9e.",
+                      "messageKey": "resource.deleted.success",
+                      "data": null,
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Configuration de visite d\u00e9sactiv\u00e9e"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "Acc\u00e8sRefus\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "PERMISSION_DENIED",
+                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
+                      "messageKey": "permission.denied",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "PERMISSION_DENIED",
+                          "message": "You do not have permission to perform this action.",
+                          "messageKey": "permission.denied",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s refus\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "RessourceIntrouvable": {
+                    "value": {
+                      "success": false,
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "Ressource introuvable.",
+                      "messageKey": "resource.not_found",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "RESOURCE_NOT_FOUND",
+                          "message": "Not found.",
+                          "messageKey": "resource.not_found",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Ressource introuvable"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
+      "get": {
+        "operationId": "visites_retrieve_2",
+        "description": "Retourne la configuration compl\u00e8te, incluant le JSON des sc\u00e8nes.",
+        "summary": "D\u00e9tail d'une configuration de visite",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "A UUID string identifying this Configuration de visite virtuelle.",
+            "required": true
+          }
+        ],
+        "tags": [
+          "Visites \u2014 Configuration"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "ConfigVisiteR\u00e9cup\u00e9r\u00e9e": {
+                    "value": {
+                      "success": true,
+                      "code": "RESOURCE_FOUND",
+                      "message": "Configuration de la visite r\u00e9cup\u00e9r\u00e9e avec succ\u00e8s.",
+                      "messageKey": "resource.found.success",
+                      "data": {
+                        "visite_id": "uuid-visite",
+                        "bien_adresse": "12 Rue des Palmiers, Lom\u00e9",
+                        "bien_id": "uuid-bien",
+                        "name": "Appartement T3 \u2014 Rue des Palmiers",
+                        "initialScene": "entree",
+                        "scenes": {
+                          "entree": {
+                            "name": "Entr\u00e9e",
+                            "image": "https://cdn.example.com/tours/entree-360.jpg",
+                            "hotspots": [
+                              {
+                                "type": "navigate",
+                                "yaw": 30.0,
+                                "pitch": -5.0,
+                                "target": "salon",
+                                "label": "Vers le salon"
+                              }
+                            ]
+                          },
+                          "salon": {
+                            "name": "Salon",
+                            "image": "https://cdn.example.com/tours/salon-360.jpg",
+                            "hotspots": [
+                              {
+                                "type": "navigate",
+                                "yaw": -45.0,
+                                "pitch": -5.0,
+                                "target": "entree",
+                                "label": "Vers l'entr\u00e9e"
+                              },
+                              {
+                                "type": "info",
+                                "yaw": 10.0,
+                                "pitch": 5.0,
+                                "title": "Baie vitr\u00e9e",
+                                "description": "Double vitrage."
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Config visite r\u00e9cup\u00e9r\u00e9e"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "Acc\u00e8sRefus\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "PERMISSION_DENIED",
+                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
+                      "messageKey": "permission.denied",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "PERMISSION_DENIED",
+                          "message": "You do not have permission to perform this action.",
+                          "messageKey": "permission.denied",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s refus\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "RessourceIntrouvable": {
+                    "value": {
+                      "success": false,
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "Ressource introuvable.",
+                      "messageKey": "resource.not_found",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "RESOURCE_NOT_FOUND",
+                          "message": "Not found.",
+                          "messageKey": "resource.not_found",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Ressource introuvable"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/visites/{id}/comptes-ephemeres/": {
+      "get": {
+        "operationId": "visites_comptes_ephemeres_retrieve_2",
+        "description": "Super Admin uniquement. Liste tous les comptes \u00e9ph\u00e9m\u00e8res cr\u00e9\u00e9s pour cette visite.",
+        "summary": "Comptes \u00e9ph\u00e9m\u00e8res d'une visite",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "A UUID string identifying this Configuration de visite virtuelle.",
+            "required": true
+          }
+        ],
+        "tags": [
+          "Visites \u2014 Administration"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "ListeDesComptes\u00c9ph\u00e9m\u00e8res": {
+                    "value": {
+                      "success": true,
+                      "code": "LIST_RETRIEVED",
+                      "message": "Comptes \u00e9ph\u00e9m\u00e8res r\u00e9cup\u00e9r\u00e9s avec succ\u00e8s.",
+                      "messageKey": "resource.list.retrieved",
+                      "data": [
+                        {
+                          "id": "bdbc1527-522d-4778-adc6-a6b980af97e8",
+                          "identifiant": "VIS-J3LL-62E6",
+                          "email_visiteur": "visiteur2@test.com",
+                          "visite_nom": "Appartement T3 \u2014 Lom\u00e9",
+                          "date_creation": "2026-03-20T18:30:20.545852Z",
+                          "date_expiration": "2026-03-21T18:30:20.545314Z",
+                          "utilise": false,
+                          "date_utilisation": null,
+                          "est_expire": false,
+                          "est_valide": true,
+                          "is_deleted": false
+                        },
+                        {
+                          "id": "05268e21-e6e8-43f2-8e0d-4886924ac65b",
+                          "identifiant": "VIS-JKPU-EI3W",
+                          "email_visiteur": "visiteur@test.com",
+                          "visite_nom": "Appartement T3 \u2014 Lom\u00e9",
+                          "date_creation": "2026-03-20T18:28:07.689310Z",
+                          "date_expiration": "2026-03-21T18:28:07.687767Z",
+                          "utilise": true,
+                          "date_utilisation": "2026-03-20T18:36:01.688180Z",
+                          "est_expire": false,
+                          "est_valide": false,
+                          "is_deleted": false
+                        }
+                      ],
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Liste des comptes \u00e9ph\u00e9m\u00e8res"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "Acc\u00e8sRefus\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "PERMISSION_DENIED",
+                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
+                      "messageKey": "permission.denied",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "PERMISSION_DENIED",
+                          "message": "You do not have permission to perform this action.",
+                          "messageKey": "permission.denied",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s refus\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "RessourceIntrouvable": {
+                    "value": {
+                      "success": false,
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "Ressource introuvable.",
+                      "messageKey": "resource.not_found",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "RESOURCE_NOT_FOUND",
+                          "message": "Not found.",
+                          "messageKey": "resource.not_found",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Ressource introuvable"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/visites/{id}/demander/": {
+      "post": {
+        "operationId": "visites_demander_create",
+        "description": "Sans authentification. Le montant est automatiquement celui du `prix` de la visite.\n\n**Mobile Money :** fournir `moyen_paiement` + `email_visiteur` + `numero_telephone`.\n\n**Carte bancaire :** fournir `moyen_paiement` + `email_visiteur` + `numero_carte` + `date_expiration` + `cvv`.\n\nEn cas de succ\u00e8s, un identifiant et un code d'acc\u00e8s sont envoy\u00e9s par mail. En mode DEBUG, ils sont \u00e9galement retourn\u00e9s dans `__debug__identifiant` et `__debug__code`.",
+        "summary": "Initier le paiement d'une visite virtuelle",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "A UUID string identifying this Configuration de visite virtuelle.",
+            "required": true
+          }
+        ],
+        "tags": [
+          "Visites \u2014 Public"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DemanderVisiteRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/DemanderVisiteRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/DemanderVisiteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "PaiementValid\u00e9\u2014Acc\u00e8sEnvoy\u00e9": {
+                    "value": {
+                      "success": true,
+                      "code": "VISITE_CREATED",
+                      "message": "Paiement valid\u00e9. Vos identifiants d'acc\u00e8s ont \u00e9t\u00e9 envoy\u00e9s par mail.",
+                      "messageKey": "visite.created.success",
+                      "data": {
+                        "reference": "VIS-2026-A3K2",
+                        "email": "visiteur@example.com",
+                        "message": "V\u00e9rifiez votre bo\u00eete mail pour r\u00e9cup\u00e9rer votre identifiant et code d'acc\u00e8s (valables 24h, usage unique).",
+                        "expire_dans": "24 heures",
+                        "__debug__identifiant": "VIS-A3K2-9XPL",
+                        "__debug__code": "483921"
+                      },
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Paiement valid\u00e9 \u2014 acc\u00e8s envoy\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "Paiement\u00c9chou\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "PAYMENT_FAILED",
+                      "message": "Le paiement a \u00e9chou\u00e9. Veuillez r\u00e9essayer.",
+                      "messageKey": "payment.transaction.failed",
+                      "data": null,
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "PAYMENT_FAILED",
+                          "message": "Simulation : \u00e9chec al\u00e9atoire selon le taux configur\u00e9.",
+                          "messageKey": "payment.transaction.failed",
+                          "details": {
+                            "reference": "VIS-2026-X9P2"
+                          }
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Paiement \u00e9chou\u00e9"
+                  },
+                  "PaiementInvalide": {
+                    "value": {
+                      "success": false,
+                      "code": "VALIDATION_REQUIRED_FIELD",
+                      "message": "Donn\u00e9es de paiement invalides.",
+                      "messageKey": "validation.required_field",
+                      "data": null,
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": [
+                        {
+                          "field": "email",
+                          "code": "VALIDATION_REQUIRED_FIELD",
+                          "message": "Ce champ est requis.",
+                          "messageKey": "validation.required_field",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Paiement invalide"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "RessourceIntrouvable": {
+                    "value": {
+                      "success": false,
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "Ressource introuvable.",
+                      "messageKey": "resource.not_found",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "RESOURCE_NOT_FOUND",
+                          "message": "Not found.",
+                          "messageKey": "resource.not_found",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Ressource introuvable"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/visites/{id}/transactions/": {
+      "get": {
+        "operationId": "visites_transactions_retrieve_2",
+        "description": "Super Admin uniquement. Liste toutes les tentatives de paiement pour cette visite.",
+        "summary": "Transactions de paiement d'une visite",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "A UUID string identifying this Configuration de visite virtuelle.",
+            "required": true
+          }
+        ],
+        "tags": [
+          "Visites \u2014 Administration"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "ListeDesTransactionsDePaiement": {
+                    "value": {
+                      "success": true,
+                      "code": "LIST_RETRIEVED",
+                      "message": "Transactions de paiement r\u00e9cup\u00e9r\u00e9es avec succ\u00e8s.",
+                      "messageKey": "resource.list.retrieved",
+                      "data": [
+                        {
+                          "id": "00f90bf4-7560-4736-9389-8f5b3d66be1e",
+                          "reference": "VIS-2026-LV43",
+                          "visite_nom": "Appartement T3 \u2014 Lom\u00e9",
+                          "email_visiteur": "visiteur2@test.com",
+                          "nom_visiteur": "Marie Ama",
+                          "montant": "7502.00",
+                          "moyen_paiement": "carte_bancaire",
+                          "statut": "valide",
+                          "date_initiation": "2026-03-20T18:30:20.530314Z",
+                          "date_validation": "2026-03-20T18:30:20.541232Z",
+                          "message_retour": "Paiement valid\u00e9 par le simulateur.",
+                          "derniers_chiffres_carte": "1111"
+                        },
+                        {
+                          "id": "2b5be535-7834-4577-be6f-7424b85df5da",
+                          "reference": "VIS-2026-58F2",
+                          "visite_nom": "Appartement T3 \u2014 Lom\u00e9",
+                          "email_visiteur": "visiteur@test.com",
+                          "nom_visiteur": "Hacker Visit",
+                          "montant": "7502.00",
+                          "moyen_paiement": "mixx_by_yas",
+                          "statut": "valide",
+                          "date_initiation": "2026-03-20T18:28:07.612882Z",
+                          "date_validation": "2026-03-20T18:28:07.677718Z",
+                          "message_retour": "Paiement valid\u00e9 par le simulateur.",
+                          "derniers_chiffres_carte": null
+                        }
+                      ],
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Liste des transactions de paiement"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "Acc\u00e8sRefus\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "PERMISSION_DENIED",
+                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
+                      "messageKey": "permission.denied",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "PERMISSION_DENIED",
+                          "message": "You do not have permission to perform this action.",
+                          "messageKey": "permission.denied",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s refus\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "RessourceIntrouvable": {
+                    "value": {
+                      "success": false,
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "Ressource introuvable.",
+                      "messageKey": "resource.not_found",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "RESOURCE_NOT_FOUND",
+                          "message": "Not found.",
+                          "messageKey": "resource.not_found",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Ressource introuvable"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    }
+}

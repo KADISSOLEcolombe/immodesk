@@ -4,9 +4,10 @@ import Link from 'next/link';
 import { FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Building2, Loader2, Pencil, PlusCircle, Trash2, X } from 'lucide-react';
-import { useVirtualVisits } from '@/components/virtual-visits/VirtualVisitProvider';
+// import { useVirtualVisits } from '@/components/virtual-visits/VirtualVisitProvider';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
 import { PatrimoineService } from '@/lib/patrimoine-service';
+import { VirtualVisitService, VisiteConfig } from '@/lib/virtual-visit-service';
 import { normalizeMediaUrl } from '@/lib/utils';
 import { UserResponse, UserService } from '@/lib/user-service';
 import { Bien, Immeuble } from '@/types/api';
@@ -119,9 +120,10 @@ function mapProperty(property: Bien): AdminProperty {
 function AdminPropertiesPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { tours } = useVirtualVisits();
+  // const { tours } = useVirtualVisits();
   const { addNotification } = useNotifications();
   const [properties, setProperties] = useState<AdminProperty[]>([]);
+  const [visiteConfigs, setVisiteConfigs] = useState<VisiteConfig[]>([]);
   const [categories, setCategories] = useState<Categorie[]>([]);
   const [owners, setOwners] = useState<UserResponse[]>([]);
   const [immeubles, setImmeubles] = useState<Immeuble[]>([]);
@@ -142,14 +144,21 @@ function AdminPropertiesPageInner() {
     try {
       setIsLoading(true);
       clearMessages();
-      const response = await PatrimoineService.getBiens();
+      const [propResponse, visitsResponse] = await Promise.all([
+        PatrimoineService.getBiens(),
+        VirtualVisitService.getVisites()
+      ]);
 
-      if (!response.success || !response.data) {
-        setError(response.message || 'Impossible de charger les biens.');
+      if (!propResponse.success || !propResponse.data) {
+        setError(propResponse.message || 'Impossible de charger les biens.');
         return;
       }
 
-      setProperties(response.data.map(mapProperty));
+      setProperties(propResponse.data.map(mapProperty));
+      
+      if (visitsResponse.success && visitsResponse.data) {
+        setVisiteConfigs(visitsResponse.data);
+      }
     } catch (err) {
       console.error('Erreur chargement biens admin:', err);
       setError('Erreur serveur lors du chargement des biens.');
@@ -192,8 +201,8 @@ function AdminPropertiesPageInner() {
   }, []);
 
   const scheduledVirtualVisitPropertyIds = useMemo(
-    () => new Set(tours.map((tour) => tour.propertyId)),
-    [tours],
+    () => new Set(visiteConfigs.map((v) => v.bien_id)),
+    [visiteConfigs],
   );
 
   const totalLabel = useMemo(() => `${properties.length} bien(s)`, [properties.length]);
