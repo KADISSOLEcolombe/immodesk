@@ -12,14 +12,7 @@ export default function Navbar() {
       </div>
 
       {/* Desktop Menu */}
-      <div className="hidden md:flex items-center gap-8 text-xs font-medium tracking-widest uppercase">
-        <Link href="#" className="hover:text-amber-200 transition-colors">Home</Link>
-        <Link href="#" className="hover:text-amber-200 transition-colors">Rooms & Suites</Link>
-        <Link href="#" className="hover:text-amber-200 transition-colors">Explore Larita</Link>
-        <Link href="#" className="hover:text-amber-200 transition-colors">News & Offers</Link>
-        <Link href="#" className="hover:text-amber-200 transition-colors">Contact</Link>
-      </div>
-
+      
       {/* Reservation Button */}
       <div className="hidden md:block mr-16">
         <Link

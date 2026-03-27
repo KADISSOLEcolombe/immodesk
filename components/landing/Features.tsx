@@ -4,23 +4,23 @@ import { MapPin, Armchair, UserCheck, Tag } from 'lucide-react';
 const features = [
   {
     icon: MapPin,
-    title: 'Located in the heart of the city',
-    description: 'Ideally located in the city\'s heart for easy access and convenience.',
+    title: 'Situé au cœur de la ville',
+    description: 'Idéalement situé au cœur de la ville pour un accès facile et pratique.',
   },
   {
-    icon: Armchair, // Using Armchair as a proxy for "Luxurious" icon
-    title: 'Luxurious, modern, and comfortable',
-    description: 'Experience a luxurious, modern, and fully equipped space for comfort.',
+    icon: Armchair,
+    title: 'Luxueux, moderne et confortable',
+    description: 'Profitez d’un espace luxueux, moderne et entièrement équipé pour votre confort.',
   },
   {
-    icon: UserCheck, // Using UserCheck for "Friendly staff"
-    title: 'Friendly and welcoming staff',
-    description: 'Our friendly and welcoming staff ensure a delightful stay every time.',
+    icon: UserCheck,
+    title: 'Personnel accueillant et chaleureux',
+    description: 'Notre personnel accueillant et chaleureux vous garantit un séjour agréable à chaque fois.',
   },
   {
-    icon: Tag, // Using Tag for "Best prices"
-    title: 'Best prices and great offers',
-    description: 'Enjoy unbeatable prices with fantastic offers tailored just for you.',
+    icon: Tag,
+    title: 'Meilleurs prix et offres exceptionnelles',
+    description: 'Profitez de prix imbattables avec des offres exceptionnelles rien que pour vous.',
   },
 ];
 

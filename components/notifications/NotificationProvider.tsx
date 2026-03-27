@@ -50,7 +50,12 @@ type NotificationContextValue = {
 const initialNotifications: AppNotification[] = [];
 
 const NotificationContext = createContext<NotificationContextValue | null>(null);
-const STORAGE_KEY = 'immodesk.notifications.v1';
+
+// Fonction pour obtenir la clé de stockage spécifique à l'utilisateur
+const getStorageKey = (userId: string | null): string => {
+  if (!userId) return 'immodesk.notifications.guest';
+  return `immodesk.notifications.user.${userId}`;
+};
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<AppNotification[]>(initialNotifications);
@@ -58,17 +63,36 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [isHydrated, setIsHydrated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const isFetching = useRef(false);
 
-  // Charger le rôle de l'utilisateur au montage
+  // Charger le rôle et l'ID de l'utilisateur au montage
   useEffect(() => {
     const role = AuthService.getUserRole() as UserRole | null;
+    const user = AuthService.getCurrentUserFromStorage();
     setUserRole(role);
-  }, []);
+    
+    const newUserId = user?.id || null;
+    
+    // Si l'utilisateur a changé, réinitialiser les notifications
+    if (userId !== null && newUserId !== userId) {
+      setNotifications([]);
+      setUnreadCount(0);
+    }
+    
+    setUserId(newUserId);
+  }, [userId]);
 
+  // Charger les notifications depuis localStorage pour cet utilisateur
   useEffect(() => {
+    if (!userId) {
+      setIsHydrated(true);
+      return;
+    }
+
     try {
-      const rawValue = window.localStorage.getItem(STORAGE_KEY);
+      const storageKey = getStorageKey(userId);
+      const rawValue = window.localStorage.getItem(storageKey);
 
       if (!rawValue) {
         setIsHydrated(true);
@@ -80,19 +104,22 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         setNotifications(parsedValue);
       }
     } catch {
-      window.localStorage.removeItem(STORAGE_KEY);
+      const storageKey = getStorageKey(userId);
+      window.localStorage.removeItem(storageKey);
     } finally {
       setIsHydrated(true);
     }
-  }, []);
+  }, [userId]);
 
+  // Sauvegarder les notifications dans localStorage pour cet utilisateur
   useEffect(() => {
-    if (!isHydrated) {
+    if (!isHydrated || !userId) {
       return;
     }
 
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(notifications));
-  }, [notifications, isHydrated]);
+    const storageKey = getStorageKey(userId);
+    window.localStorage.setItem(storageKey, JSON.stringify(notifications));
+  }, [notifications, isHydrated, userId]);
 
   // Rafraîchir les notifications depuis le backend - stable reference
   const refreshNotifications = useCallback(async () => {
@@ -121,13 +148,30 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
       ]);
 
       if (notificationsResponse.success && notificationsResponse.data) {
-        setNotifications(notificationsResponse.data);
+        setNotifications((currentNotifications) => {
+          const backendNotifications = notificationsResponse.data || [];
+          
+          // Séparer les notifications locales (créées via addNotification) des notifications backend
+          const localNotifications = currentNotifications.filter(n => n.id.startsWith('n-'));
+          const backendIds = new Set(backendNotifications.map(n => n.id));
+          
+          // Garder uniquement les notifications locales qui ne sont pas dans le backend
+          const uniqueLocalNotifications = localNotifications.filter(n => !backendIds.has(n.id));
+          
+          // Fusionner: notifications locales d'abord, puis backend
+          return [...uniqueLocalNotifications, ...backendNotifications];
+        });
       }
 
       if (unreadResponse.success && unreadResponse.data) {
         setUnreadCount(Number(unreadResponse.data.count ?? 0));
       } else if (notificationsResponse.success && notificationsResponse.data) {
-        setUnreadCount(notificationsResponse.data.filter((item) => !item.lue).length);
+        // Compter aussi les notifications locales non lues
+        setNotifications((current) => {
+          const unread = current.filter((item) => !item.lue).length;
+          setUnreadCount(unread);
+          return current;
+        });
       }
     } catch (error) {
       console.error('Erreur lors du rafraîchissement des notifications:', error);

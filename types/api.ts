@@ -36,7 +36,7 @@ export interface Categorie {
   created_at: string;
 }
 
-export type TypeLogement = 'studio' | 't1' | 't2' | 't3' | 't4' | 'house' | 'villa' | 'commercial';
+export type TypeLogement = 'studio' | 't1' | 't2' | 't3' | 't4_plus' | 'duplex' | 'loft' | 'villa' | 'maison' | 'autre';
 export type StatutBien = 'vacant' | 'loue' | 'maintenance' | 'en_travaux' | 'reservation';
 
 export interface Immeuble {
@@ -48,11 +48,19 @@ export interface Immeuble {
   latitude: number | null;
   longitude: number | null;
   lien_maps: string;
-  type_logement: TypeLogement;
-  nombre_etages: number | null;
-  annee_construction: number | null;
+  type_logement: TypeLogement | null;
+  categorie_logement: string | null;
+  nb_pieces: number | null;
+  surface_m2: string | number | null;
+  standing: string | null;
+  etage: string;
+  amenagement: string | null;
+  espaces_exterieurs: string[];
+  usage_special: string;
+  accessibilite: string[];
   created_at: string;
   updated_at: string;
+  is_deleted: boolean;
 }
 
 export interface Bien {

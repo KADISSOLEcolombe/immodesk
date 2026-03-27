@@ -24,6 +24,8 @@ export default function VirtualVisitPage() {
   const [popupStep, setPopupStep] = useState<1 | 2 | 3>(1);
   const [isPaying, setIsPaying] = useState(false);
   const [paymentConfirmation, setPaymentConfirmation] = useState<string>('');
+  const [paymentMethod, setPaymentMethod] = useState<'moov_money' | 'mixx_by_yas' | 'carte_bancaire'>('moov_money');
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const paymentSequenceRef = useRef(0);
 
   const visitId = String(params.id || '');
@@ -51,6 +53,27 @@ export default function VirtualVisitPage() {
     recordVisitOpen(result.access.id);
   };
 
+  const validatePhoneNumber = (phoneNumber: string): { valid: boolean; message?: string } => {
+    const cleaned = phoneNumber.replace(/\s+/g, '');
+    
+    // Togo phone number format: 8 digits starting with 9 or 7
+    const togoPattern = /^[97]\d{7}$/;
+    
+    if (!cleaned) {
+      return { valid: false, message: 'Le numéro de téléphone est requis.' };
+    }
+    
+    if (!/^\d+$/.test(cleaned)) {
+      return { valid: false, message: 'Le numéro ne doit contenir que des chiffres.' };
+    }
+    
+    if (!togoPattern.test(cleaned)) {
+      return { valid: false, message: 'Format invalide. Le numéro doit commencer par 9 ou 7 et contenir 8 chiffres (ex: 90 00 00 00).' };
+    }
+    
+    return { valid: true };
+  };
+
   const handlePayNow = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -62,18 +85,21 @@ export default function VirtualVisitPage() {
     }
 
     const mmPhone = phone.trim();
-    if (!mmPhone) {
-      setError('Renseigne ton numéro Mobile Money.');
+    const validation = validatePhoneNumber(mmPhone);
+    
+    if (!validation.valid) {
+      setError(validation.message || 'Numéro de téléphone invalide.');
       return;
     }
 
     setError('');
     setIsPaying(true);
 
-    // Simulation de paiement Mobile Money avant d'afficher l'accès.
+    // Simulation de paiement selon la méthode choisie
+    const methodPrefix = paymentMethod === 'moov_money' ? 'MM' : paymentMethod === 'mixx_by_yas' ? 'MX' : 'CB';
     window.setTimeout(() => {
       // Si l'ID/code ne viennent pas déjà de l'URL, on les génère après paiement.
-      const paymentRef = `MM-${Date.now().toString().slice(-6)}`;
+      const paymentRef = `${methodPrefix}-${Date.now().toString().slice(-6)}`;
       if (!visitIdInput.trim() || !code.trim()) {
         const created = generateTemporaryAccess(inferredPropertyId, mmPhone);
         setVisitIdInput(created.id);
@@ -81,7 +107,8 @@ export default function VirtualVisitPage() {
       }
 
       setIsPaying(false);
-      setPaymentConfirmation(`Paiement confirmé ! Accès à la visite activé. (Réf: ${paymentRef})`);
+      const methodLabel = paymentMethod === 'moov_money' ? 'Moov Money' : paymentMethod === 'mixx_by_yas' ? 'Mixx by Yas' : 'Carte bancaire';
+      setPaymentConfirmation(`Paiement ${methodLabel} confirmé ! Accès à la visite activé. (Réf: ${paymentRef})`);
 
       // Petit délai pour afficher clairement la confirmation sur l'étape 2.
       window.setTimeout(() => {
@@ -107,6 +134,19 @@ export default function VirtualVisitPage() {
     setPaymentConfirmation('');
     paymentSequenceRef.current += 1;
     setPopupStep((current) => (current > 1 ? ((current - 1) as 1 | 2) : current));
+  };
+
+  const handleExitAttempt = () => {
+    if (popupStep === 2 || popupStep === 3) {
+      setShowExitConfirm(true);
+    } else {
+      router.push('/');
+    }
+  };
+
+  const confirmExit = () => {
+    setShowExitConfirm(false);
+    router.push('/');
   };
 
   return (
@@ -164,7 +204,7 @@ export default function VirtualVisitPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-md animate-in fade-in duration-300">
             <div className="relative w-full max-w-4xl rounded-[28px] shadow-2xl ring-1 ring-black/5 overflow-hidden bg-white animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
               <button
-                onClick={() => router.push('/visit')}
+                onClick={handleExitAttempt}
                 className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/10 hover:bg-black/20 backdrop-blur-sm text-zinc-900 transition-all hover:scale-110"
                 aria-label="Fermer"
               >
@@ -249,19 +289,42 @@ export default function VirtualVisitPage() {
                           </p>
                         </div>
 
-                        <label className="block text-sm font-semibold text-zinc-800">
-                          <span className="inline-flex items-center gap-2">
-                            <Phone className="h-4 w-4 text-zinc-400" aria-hidden="true" />
-                            Numéro de téléphone (paiement Mobile Money)
-                          </span>
-                          <input
-                            type="tel"
-                            value={phone}
-                            onChange={(event) => setPhone(event.target.value)}
-                            placeholder="Ex: 90 00 00 00"
-                            className="mt-3 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 focus:ring-4 focus:ring-zinc-900/10"
-                          />
-                        </label>
+                        <div className="space-y-3">
+                          <label className="block text-sm font-semibold text-zinc-800">
+                            Méthode de paiement
+                            <select
+                              value={paymentMethod}
+                              onChange={(e) => setPaymentMethod(e.target.value as typeof paymentMethod)}
+                              className="mt-3 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 focus:ring-4 focus:ring-zinc-900/10"
+                            >
+                              <option value="moov_money">Moov Money</option>
+                              <option value="mixx_by_yas">Mixx by Yas</option>
+                              <option value="carte_bancaire">Carte bancaire</option>
+                            </select>
+                          </label>
+
+                          <label className="block text-sm font-semibold text-zinc-800">
+                            <span className="inline-flex items-center gap-2">
+                              <Phone className="h-4 w-4 text-zinc-400" aria-hidden="true" />
+                              Numéro de téléphone
+                            </span>
+                            <input
+                              type="tel"
+                              value={phone}
+                              onChange={(event) => {
+                                const value = event.target.value;
+                                // Only allow digits and spaces
+                                if (/^[\d\s]*$/.test(value)) {
+                                  setPhone(value);
+                                }
+                              }}
+                              placeholder="Ex: 90 00 00 00"
+                              maxLength={11}
+                              className="mt-3 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 focus:ring-4 focus:ring-zinc-900/10"
+                            />
+                            <p className="mt-1 text-xs text-zinc-500">Format: 8 chiffres commençant par 9 ou 7</p>
+                          </label>
+                        </div>
 
                         {error && <p className="text-sm font-medium text-orange-700">{error}</p>}
 
@@ -350,6 +413,32 @@ export default function VirtualVisitPage() {
                     Données non partagées. Utilisées uniquement pour la visite.
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Exit Confirmation Dialog */}
+        {showExitConfirm && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl">
+              <h3 className="text-lg font-bold text-zinc-900 mb-2">Quitter la visite ?</h3>
+              <p className="text-sm text-zinc-600 mb-6">
+                Si vous quittez maintenant, votre progression sera perdue et vous devrez recommencer le processus de paiement.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowExitConfirm(false)}
+                  className="px-4 py-2 text-sm font-medium text-zinc-600 hover:text-zinc-900 transition"
+                >
+                  Continuer la visite
+                </button>
+                <button
+                  onClick={confirmExit}
+                  className="px-4 py-2 bg-red-600 text-white rounded-xl text-sm font-medium hover:bg-red-700 transition"
+                >
+                  Quitter
+                </button>
               </div>
             </div>
           </div>

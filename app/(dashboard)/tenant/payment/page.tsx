@@ -468,8 +468,15 @@ export default function TenantPaymentPage() {
                       <input 
                         type="tel" 
                         value={mobileNumber} 
-                        onChange={(e) => setMobileNumber(e.target.value)} 
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          // Only allow digits and spaces
+                          if (/^[\d\s]*$/.test(value)) {
+                            setMobileNumber(value);
+                          }
+                        }} 
                         placeholder="Ex: 90 00 00 00" 
+                        maxLength={11}
                         className="w-full h-12 pl-12 pr-4 rounded-xl border border-zinc-200 bg-white text-zinc-900 outline-none transition-all focus:border-zinc-900 focus:ring-4 focus:ring-zinc-900/5 font-medium text-lg tracking-wide" 
                       />
                     </div>
@@ -485,8 +492,17 @@ export default function TenantPaymentPage() {
                         <input 
                           type="text" 
                           value={cardNumber} 
-                          onChange={(e) => setCardNumber(e.target.value)} 
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\s/g, '');
+                            // Only allow digits
+                            if (/^\d*$/.test(value)) {
+                              // Format with spaces every 4 digits
+                              const formatted = value.match(/.{1,4}/g)?.join(' ') || value;
+                              setCardNumber(formatted);
+                            }
+                          }} 
                           placeholder="0000 0000 0000 0000" 
+                          maxLength={19}
                           className="w-full h-12 pl-12 pr-4 rounded-xl border border-zinc-200 bg-white text-zinc-900 outline-none transition-all focus:border-zinc-900 focus:ring-4 focus:ring-zinc-900/5 font-mono tracking-widest" 
                         />
                       </div>
@@ -497,8 +513,18 @@ export default function TenantPaymentPage() {
                         <input 
                           type="text" 
                           value={cardExpiry} 
-                          onChange={(e) => setCardExpiry(e.target.value)} 
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\D/g, '');
+                            // Only allow digits, auto-format MM/YY
+                            if (value.length <= 4) {
+                              const formatted = value.length >= 2 
+                                ? value.slice(0, 2) + '/' + value.slice(2) 
+                                : value;
+                              setCardExpiry(formatted);
+                            }
+                          }} 
                           placeholder="MM/AA" 
+                          maxLength={5}
                           className="w-full h-12 px-4 rounded-xl border border-zinc-200 bg-white text-zinc-900 outline-none transition-all focus:border-zinc-900 focus:ring-4 focus:ring-zinc-900/5 text-center font-mono" 
                         />
                       </div>
@@ -507,9 +533,15 @@ export default function TenantPaymentPage() {
                         <input 
                           type="password" 
                           value={cardCvv} 
-                          onChange={(e) => setCardCvv(e.target.value)} 
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            // Only allow digits
+                            if (/^\d*$/.test(value) && value.length <= 4) {
+                              setCardCvv(value);
+                            }
+                          }} 
                           placeholder="123" 
-                          maxLength={3}
+                          maxLength={4}
                           className="w-full h-12 px-4 rounded-xl border border-zinc-200 bg-white text-zinc-900 outline-none transition-all focus:border-zinc-900 focus:ring-4 focus:ring-zinc-900/5 text-center font-mono" 
                         />
                       </div>
