@@ -79,6 +79,7 @@ type UiProperty = {
   photos: string[];
   typeLogement: string;
   standing: string;
+  hasVirtualTour: boolean;
 };
 
 interface PropertyDetailPageProps {
@@ -164,6 +165,7 @@ function toUiProperty(detail: PublicBienDetail): UiProperty {
     photos,
     typeLogement: detail.type_logement || 'Non precise',
     standing: detail.standing || 'Standard',
+    hasVirtualTour: !!detail.has_virtual_tour,
   };
 }
 
@@ -174,8 +176,12 @@ export default function PropertyDetailClient({ id, role }: PropertyDetailPagePro
   const [error, setError] = useState<string | null>(null);
   const [isNotFound, setIsNotFound] = useState(false);
   const router = useRouter();
-  const { generateTemporaryAccess } = useVirtualVisits();
+  const { generateTemporaryAccess, tours } = useVirtualVisits();
   const viewerRole = normalizeRole(role);
+
+  const hasTour = useMemo(() => {
+    return property ? (property.hasVirtualTour || tours.some(t => t.propertyId === property.id)) : false;
+  }, [property, tours]);
 
   useEffect(() => {
     const loadProperty = async () => {
@@ -239,10 +245,10 @@ export default function PropertyDetailClient({ id, role }: PropertyDetailPagePro
 
   if (isLoading) {
     return (
-      <section className="rounded-2xl border border-black/5 bg-white p-8 shadow-sm">
+      <section className="rounded-2xl border border-border bg-card p-8 shadow-sm">
         <div className="flex flex-col items-center justify-center py-10">
-          <div className="h-10 w-10 animate-spin rounded-full border-4 border-zinc-200 border-t-zinc-900" />
-          <p className="mt-4 text-sm text-zinc-500">Chargement du detail du bien...</p>
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-secondary border-t-primary" />
+          <p className="mt-4 text-sm text-muted-foreground">Chargement du detail du bien...</p>
         </div>
       </section>
     );
@@ -286,18 +292,35 @@ export default function PropertyDetailClient({ id, role }: PropertyDetailPagePro
 
   return (
     <div className="mx-auto w-full max-w-7xl">
-        <Link
-          href="/properties"
-          className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-zinc-600 transition hover:text-zinc-900"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Retour a la liste
-        </Link>
+        <div className="flex items-center justify-between mb-6">
+          <button
+            onClick={() => {
+              if (typeof document !== 'undefined' && document.referrer.includes(window.location.host) && !document.referrer.includes('/properties/')) {
+                router.back();
+              } else {
+                router.push('/properties');
+              }
+            }}
+            className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            Retour
+          </button>
+          
+          {typeof document !== 'undefined' && document.referrer.endsWith('/') && (
+             <Link
+               href="/"
+               className="text-[10px] font-bold tracking-widest uppercase text-amber-600 hover:text-amber-700"
+             >
+               Retour à l'accueil
+             </Link>
+          )}
+        </div>
 
         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">{property.title}</h1>
-            <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-zinc-600 sm:text-base">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl transition-colors duration-500">{property.title}</h1>
+            <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-muted-foreground sm:text-base">
               <MapPin className="h-4 w-4" aria-hidden="true" />
               {property.address}
             </p>
@@ -312,32 +335,32 @@ export default function PropertyDetailClient({ id, role }: PropertyDetailPagePro
         <PropertyGallery title={property.title} images={property.photos} />
 
         <section className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
-          <article className="rounded-2xl border border-black/5 bg-white p-5 shadow-sm sm:p-6">
-            <h2 className="text-lg font-semibold text-zinc-900">Description</h2>
-            <p className="mt-3 text-sm leading-7 text-zinc-600 sm:text-base">{property.description}</p>
+          <article className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6 transition-colors duration-500">
+            <h2 className="text-lg font-semibold text-foreground">Description</h2>
+            <p className="mt-3 text-sm leading-7 text-muted-foreground sm:text-base">{property.description}</p>
 
             <h3 className="mt-6 text-base font-semibold text-zinc-900">Caracteristiques detaillees</h3>
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="flex items-center gap-2 rounded-xl bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
+              <div className="flex items-center gap-2 rounded-xl bg-secondary px-3 py-2 text-sm text-foreground">
                 <Ruler className="h-4 w-4" aria-hidden="true" />
                 Surface: {property.surface} m2
               </div>
-              <div className="flex items-center gap-2 rounded-xl bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
+              <div className="flex items-center gap-2 rounded-xl bg-secondary px-3 py-2 text-sm text-foreground">
                 <DoorOpen className="h-4 w-4" aria-hidden="true" />
                 Pieces: {property.rooms}
               </div>
-              <div className="flex items-center gap-2 rounded-xl bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
+              <div className="flex items-center gap-2 rounded-xl bg-secondary px-3 py-2 text-sm text-foreground">
                 <BedDouble className="h-4 w-4" aria-hidden="true" />
                 Chambres: {property.bedrooms}
               </div>
-              <div className="flex items-center gap-2 rounded-xl bg-zinc-50 px-3 py-2 text-sm text-zinc-700">
+              <div className="flex items-center gap-2 rounded-xl bg-secondary px-3 py-2 text-sm text-foreground">
                 <Building2 className="h-4 w-4" aria-hidden="true" />
                 Ville: {property.city}
               </div>
             </div>
 
-            <h3 className="mt-6 text-base font-semibold text-zinc-900">Localisation</h3>
-            <p className="mt-1 text-sm text-zinc-600">
+            <h3 className="mt-6 text-base font-semibold text-foreground">Localisation</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
               {property.buildingName !== 'Non specifie'
                 ? `Immeuble: ${property.buildingName}`
                 : 'Ce bien ne reference pas encore un immeuble dans la base.'}
@@ -347,7 +370,7 @@ export default function PropertyDetailClient({ id, role }: PropertyDetailPagePro
               {locationPoints.length > 0 ? (
                 <PropertyLocationMap points={locationPoints} />
               ) : (
-                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+                <div className="rounded-xl border border-border bg-secondary p-4 text-sm text-muted-foreground">
                   Les coordonnees de ce bien ne sont pas disponibles pour le moment.
                 </div>
               )}
@@ -365,15 +388,15 @@ export default function PropertyDetailClient({ id, role }: PropertyDetailPagePro
               </a>
             ) : null}
 
-            <h3 className="mt-6 text-base font-semibold text-zinc-900">Informations proprietaire</h3>
-            <div className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50 p-4">
+            <h3 className="mt-6 text-base font-semibold text-foreground">Informations proprietaire</h3>
+            <div className="mt-3 rounded-xl border border-border bg-secondary p-4">
               <div className="flex items-start gap-3">
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white ring-1 ring-zinc-200">
                   <UserRound className="h-5 w-5 text-zinc-700" aria-hidden="true" />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-zinc-900">{ownerName}</p>
-                  <p className="mt-1 inline-flex items-center gap-2 text-sm text-zinc-600">
+                  <p className="text-sm font-semibold text-foreground">{ownerName}</p>
+                  <p className="mt-1 inline-flex items-center gap-2 text-sm text-muted-foreground">
                     <Mail className="h-4 w-4" aria-hidden="true" />
                     {ownerEmail}
                   </p>
@@ -405,12 +428,12 @@ export default function PropertyDetailClient({ id, role }: PropertyDetailPagePro
             )}
           </article>
 
-          <aside className="h-fit rounded-2xl border border-zinc-100 bg-white p-6 shadow-xl shadow-zinc-200/50">
+          <aside className="h-fit rounded-2xl border border-border bg-card p-6 shadow-xl shadow-primary/5 transition-colors duration-500">
             {/* Price Header */}
             <div className="mb-6">
-              <span className="text-3xl font-bold text-zinc-900">{currencyFormatter.format(property.rentAmount)}</span>
-              <span className="text-zinc-500"> / mois</span>
-              <div className="mt-1 text-sm text-zinc-500">
+              <span className="text-3xl font-bold text-foreground">{currencyFormatter.format(property.rentAmount)}</span>
+              <span className="text-muted-foreground"> / mois</span>
+              <div className="mt-1 text-sm text-muted-foreground">
                 + {currencyFormatter.format(property.chargesAmount)} charges
               </div>
             </div>
@@ -418,18 +441,20 @@ export default function PropertyDetailClient({ id, role }: PropertyDetailPagePro
             {/* Actions */}
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
-                  <button 
-                    onClick={handleVirtualVisitClick}
-                    className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-200 p-3 text-sm font-medium text-zinc-700 transition hover:border-zinc-900 hover:bg-zinc-50 group"
-                  >
-                      <Video className="h-5 w-5 text-zinc-400 group-hover:text-zinc-900" />
-                      Visite Virtuelle
-                  </button>
+                  {hasTour && (
+                    <button 
+                      onClick={handleVirtualVisitClick}
+                      className="flex flex-col items-center justify-center gap-2 rounded-xl border border-border p-3 text-sm font-medium text-muted-foreground transition hover:border-primary hover:bg-secondary group"
+                    >
+                        <Video className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
+                        Visite Virtuelle
+                    </button>
+                  )}
                   <button 
                     onClick={handlePhysicalVisitClick}
-                    className="flex flex-col items-center justify-center gap-2 rounded-xl border border-zinc-200 p-3 text-sm font-medium text-zinc-700 transition hover:border-zinc-900 hover:bg-zinc-50 group"
+                    className={`flex flex-col items-center justify-center gap-2 rounded-xl border border-border p-3 text-sm font-medium text-muted-foreground transition hover:border-primary hover:bg-secondary group ${!hasTour ? 'col-span-2' : ''}`}
                   >
-                      <CalendarDays className="h-5 w-5 text-zinc-400 group-hover:text-zinc-900" />
+                      <CalendarDays className="h-5 w-5 text-muted-foreground group-hover:text-primary" />
                       Contact visite
                   </button>
               </div>
@@ -437,7 +462,7 @@ export default function PropertyDetailClient({ id, role }: PropertyDetailPagePro
               {ownerMailHref ? (
                 <a
                   href={ownerMailHref}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-zinc-900 py-3.5 text-center text-sm font-bold text-white shadow-md shadow-zinc-900/20 transition hover:bg-zinc-800 hover:shadow-lg hover:scale-[1.02]"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-center text-sm font-bold text-primary-foreground shadow-md shadow-primary/20 transition hover:opacity-90 hover:shadow-lg hover:scale-[1.02]"
                 >
                   <Key className="h-4 w-4" />
                   Contacter le proprietaire

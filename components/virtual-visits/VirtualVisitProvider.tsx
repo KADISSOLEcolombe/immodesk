@@ -2,19 +2,7 @@
 
 import { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 import { mockProperties } from '@/data/properties';
-
-type MediaType = 'image360' | 'video360';
-
-type TourAsset = {
-  id: string;
-  propertyId: string;
-  fileName: string;
-  fileUrl: string;
-  mediaType: MediaType;
-  durationMinutes: number;
-  accessMode: 'code';
-  createdAt: string;
-};
+import { TourAsset, TourHotspot, TourAssetMetadata, MediaType } from '@/types/tour360';
 
 export type VirtualVisitAccess = {
   id: string;
@@ -58,6 +46,7 @@ type VirtualVisitsContextValue = {
   recordVisitOpen: (accessId: string) => void;
   recordContactClick: (accessId: string) => void;
   getVisitStats: () => VirtualVisitStats;
+  removeAccess: (id: string) => void;
 };
 
 const STORAGE_KEY = 'immodesk.virtual-visits.v1';
@@ -214,6 +203,14 @@ export function VirtualVisitProvider({ children }: { children: ReactNode }) {
     };
   };
 
+  const removeAccess = (id: string) => {
+    setState((current) => ({
+      ...current,
+      accesses: current.accesses.filter((item) => item.id !== id),
+      logs: current.logs.filter((item) => item.accessId !== id),
+    }));
+  };
+
   const value: VirtualVisitsContextValue = {
     tours: state.tours,
     accesses: state.accesses,
@@ -224,6 +221,7 @@ export function VirtualVisitProvider({ children }: { children: ReactNode }) {
     recordVisitOpen,
     recordContactClick,
     getVisitStats,
+    removeAccess,
   };
 
   return <VirtualVisitsContext.Provider value={value}>{children}</VirtualVisitsContext.Provider>;

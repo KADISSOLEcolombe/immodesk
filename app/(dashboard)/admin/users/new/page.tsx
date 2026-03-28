@@ -384,7 +384,7 @@ export default function AdminUserCreatePage() {
               Afficher le mot de passe
             </label>
             <p className="text-xs font-normal text-zinc-500">
-              Option rapide: cliquez sur "Générer" pour créer un mot de passe sécurisé automatiquement.
+              Tips: cliquez sur "Générer" pour créer un mot de passe sécurisé automatiquement.
             </p>
           </label>
 

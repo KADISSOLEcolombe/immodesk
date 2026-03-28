@@ -16,12 +16,16 @@ const currencyFormatter = new Intl.NumberFormat('fr-TG', {
   maximumFractionDigits: 0,
 });
 
-const formatDateShort = (date: string) =>
-  new Date(date).toLocaleDateString('fr-FR', {
+const formatDateShort = (date: string | null | undefined) => {
+  if (!date) return 'Indéterminée';
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return 'Date invalide';
+  return d.toLocaleDateString('fr-FR', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
   });
+};
 
 const formatDateLong = (date: Date) =>
   date.toLocaleDateString('fr-FR', {
@@ -52,8 +56,8 @@ const computeNextDue = (bail: Bail, transactions: TransactionPaiement[]): NextDu
 
   const now = new Date();
   const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const startDate = new Date(bail.date_debut);
-  const endDate = new Date(bail.date_fin);
+  const startDate = new Date(bail.date_entree);
+  const endDate = new Date(bail.date_sortie);
 
   const leaseStartMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
   const leaseEndMonth = new Date(endDate.getFullYear(), endDate.getMonth(), 1);
@@ -341,24 +345,41 @@ export default function TenantOverviewPage() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100 flex flex-col justify-between">
+                    <p className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-2">Loyer HC</p>
+                    <div className="font-bold text-zinc-900 text-sm">
+                      {bail ? currencyFormatter.format(bail.loyer_mensuel) : '-'}
+                    </div>
+                  </div>
+                  <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100 flex flex-col justify-between">
+                    <p className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-2">Charges</p>
+                    <div className="font-bold text-zinc-600 text-sm">
+                      {bail?.charges_mensuelles && Number(bail.charges_mensuelles) > 0 
+                        ? currencyFormatter.format(bail.charges_mensuelles) 
+                        : 'Aucune charges'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
                     <p className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-2">Début</p>
                     <div className="flex items-center gap-2 font-semibold text-zinc-900 text-sm">
                       <Calendar className="w-4 h-4 text-zinc-400" />
-                      {bail ? formatDateShort(bail.date_debut) : '-'}
+                      {bail ? formatDateShort(bail.date_entree) : '-'}
                     </div>
                   </div>
                   <div className="bg-zinc-50 p-4 rounded-2xl border border-zinc-100">
                     <p className="text-xs font-medium text-zinc-400 uppercase tracking-wider mb-2">Fin</p>
                     <div className="flex items-center gap-2 font-semibold text-zinc-900 text-sm">
                       <Calendar className="w-4 h-4 text-zinc-400" />
-                      {bail ? formatDateShort(bail.date_fin) : '-'}
+                      {bail ? formatDateShort(bail.date_sortie) : '-'}
                     </div>
                   </div>
                 </div>
 
                 <div className="pt-4 border-t border-zinc-100">
-                  {bail?.bien ? (
+                  {bail?.id ? (
                     <Link 
                       href={`/properties/${bail.bien}?role=tenant`}
                       className="flex items-center justify-between w-full p-4 rounded-xl border border-zinc-200 hover:border-zinc-900 hover:bg-zinc-50 transition-all group"
@@ -368,7 +389,7 @@ export default function TenantOverviewPage() {
                     </Link>
                   ) : (
                     <div className="w-full rounded-xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-500">
-                      La fiche du bien sera disponible dès qu'un bail actif est associé à votre compte.
+                      Les détails du bail s'afficheront dès qu'un bail actif sera associé à votre compte.
                     </div>
                   )}
                 </div>

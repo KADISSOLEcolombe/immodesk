@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import { toastStore } from '@/lib/toast-store';
 
 type RetryableRequestConfig = {
   _retry?: boolean;
@@ -109,12 +110,36 @@ class ApiClient {
     this.client.interceptors.response.use(
       (response) => {
         console.log('✅ Réponse API réussie:', response.config.method?.toUpperCase(), response.config.url, response.status);
+        
+        // Afficher un toast de succès si un message est présent
+        const data = response.data as StandardApiResponse;
+        if (data.success && data.message && response.config.method !== 'get') {
+          toastStore.success(data.message);
+        }
+        
         return response;
       },
       async (error) => {
         const originalRequest = (error.config || {}) as RetryableRequestConfig;
 
         console.error('❌ Erreur API:', error.config?.method?.toUpperCase(), error.config?.url, error.response?.status);
+
+        // Gérer l'affichage des erreurs via Toast
+        const responseData = error.response?.data as StandardApiResponse;
+        if (responseData && !responseData.success) {
+          let errorMsg = responseData.message || "Une erreur est survenue.";
+          
+          if (responseData.errors && responseData.errors.length > 0) {
+            const detailMsgs = responseData.errors
+              .map(err => `${err.field ? `[${err.field}] ` : ''}${err.message}`)
+              .join('\n');
+            errorMsg = `${errorMsg}\n${detailMsgs}`;
+          }
+          
+          toastStore.error(errorMsg);
+        } else if (!error.response) {
+          toastStore.error("Impossible de contacter le serveur. Vérifiez votre connexion.");
+        }
 
         if (error.response?.status !== 401 || !originalRequest) {
           return Promise.reject(error);
@@ -165,14 +190,32 @@ class ApiClient {
     if (typeof window === 'undefined') {
       return null;
     }
-    return localStorage.getItem('access_token');
+    const token = localStorage.getItem('access_token');
+    if (token) return token;
+
+    // Fallback aux cookies si localStorage est vide (ex: après refresh ou nouvel onglet)
+    const cookies = document.cookie.split(';');
+    for (const cookie of cookies) {
+      const [name, value] = cookie.trim().split('=');
+      if (name.trim() === 'access_token') return value;
+    }
+    return null;
   }
 
   private getRefreshToken(): string | null {
     if (typeof window === 'undefined') {
       return null;
     }
-    return localStorage.getItem('refresh_token');
+    const token = localStorage.getItem('refresh_token');
+    if (token) return token;
+
+    // Fallback aux cookies
+    const cookies = document.cookie.split(';');
+    for (const cookie of cookies) {
+      const [name, value] = cookie.trim().split('=');
+      if (name.trim() === 'refresh_token') return value;
+    }
+    return null;
   }
 
   private shouldSkipRefresh(url: string): boolean {

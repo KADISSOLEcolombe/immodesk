@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { BarChart3, Bell, Building2, CheckCircle2, CreditCard, FileText, LayoutDashboard, LogOut, Settings2, Tags, Users, Video } from 'lucide-react';
+import { BarChart3, Bell, Building2, CheckCircle2, CreditCard, FileText, LayoutDashboard, LogOut, Settings2, Tags, Users, Video, Key } from 'lucide-react';
 import { AuthService } from '@/lib/auth-service';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 
@@ -17,7 +17,8 @@ const adminNav = [
   { href: '/admin/payments', label: 'Paiements', icon: CreditCard, exact: false },
   { href: '/admin/comptabilite/depenses', label: 'Dépenses globales', icon: FileText, exact: false },
   { href: '/admin/notifications', label: 'Notifications', icon: Bell, exact: false },
-  // { href: '/admin/virtual-visits', label: 'Visites 360°', icon: Video, exact: false },
+  { href: '/admin/virtual-visits', label: 'Visites 360°', icon: Video, exact: false },
+  { href: '/admin/virtual-accounts', label: 'Comptes Éphémères', icon: Key, exact: false },
   // { href: '/admin/reports', label: 'Rapports', icon: FileText, exact: false },
   // { href: '/admin/settings', label: 'Configuration', icon: Settings2, exact: false },
   // { href: '/admin/stats', label: 'Statistiques', icon: BarChart3, exact: false },
@@ -51,10 +52,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Link
                   key={href}
                   href={href}
-                  className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                  className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-300 ${
                     isActive
-                      ? 'bg-zinc-900 text-white shadow-sm'
-                      : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
+                      ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20 scale-[1.02]'
+                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                   }`}
                 >
                   <Icon className="h-4 w-4" aria-hidden="true" />

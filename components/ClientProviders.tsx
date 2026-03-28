@@ -9,6 +9,7 @@ import { ReportsProvider } from '@/components/reports/ReportProvider';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import ThemeToggle from '@/components/theme/ThemeToggle';
 import { VirtualVisitProvider } from '@/components/virtual-visits/VirtualVisitProvider';
+import ToastContainer from '@/components/ui/ToastContainer';
 
 export default function ClientProviders({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -22,6 +23,7 @@ export default function ClientProviders({ children }: { children: ReactNode }) {
             <VirtualVisitProvider>
               {/* <ThemeToggle /> */}
               {!hideNotifications && <NotificationCenter />}
+              <ToastContainer />
               {children}
             </VirtualVisitProvider>
           </ReportsProvider>

@@ -15,7 +15,7 @@ export default function PropertyGallery({ title, images }: PropertyGalleryProps)
 
   return (
     <div className="mb-8 flex flex-col gap-4">
-      <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-zinc-100">
+      <div className="relative aspect-video w-full overflow-hidden rounded-2xl bg-secondary transition-colors duration-500">
         <Image
           src={activeImage}
           alt={title}
@@ -32,7 +32,7 @@ export default function PropertyGallery({ title, images }: PropertyGalleryProps)
               key={index}
               onClick={() => setActiveImage(img)}
               className={`relative h-20 w-32 shrink-0 overflow-hidden rounded-lg border-2 transition-all ${
-                activeImage === img ? 'border-zinc-900 ring-2 ring-zinc-900/20' : 'border-transparent hover:border-zinc-300'
+                activeImage === img ? 'border-primary ring-2 ring-primary/20' : 'border-transparent hover:border-primary/20'
               }`}
             >
               <Image

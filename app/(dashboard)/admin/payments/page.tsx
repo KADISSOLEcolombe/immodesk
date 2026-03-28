@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { CreditCard, Loader2, AlertCircle } from 'lucide-react';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
+import { useVirtualVisits } from '@/components/virtual-visits/VirtualVisitProvider';
 import { ComptabiliteService } from '@/lib/comptabilite-service';
 import { PaiementEnLigneService } from '@/lib/paiement-en-ligne-service';
 import { ConfigSimulateur, Paiement, StatutPaiement } from '@/types/api';
@@ -127,6 +128,8 @@ export default function AdminPaymentsPage() {
   const [paymentIssues, setPaymentIssues] = useState<PaymentIssue[]>(initialPaymentIssues);
   const [activeTab, setActiveTab] = useState<'global' | 'simulateur' | 'issues' | 'audit'>('global');
 
+  const { accesses } = useVirtualVisits();
+
   // Fetch payments from API
   const fetchPayments = async () => {
     setLoading(true);
@@ -135,29 +138,57 @@ export default function AdminPaymentsPage() {
       const response = await ComptabiliteService.getPaiements({
         statut: paymentStatusFilter === 'all' ? undefined : mapUIStatusToBackend(paymentStatusFilter),
       });
+      let transformed: PaymentRecord[] = [];
       if (response.success && response.data) {
-        const transformed = response.data.map(transformPaiement);
-        // Apply frontend filters
-        let filtered = transformed;
-        if (paymentTypeFilter !== 'all') {
-          filtered = filtered.filter(p => p.channel === paymentTypeFilter);
-        }
-        setPayments(filtered);
-        setNextStatusByPayment(
-          filtered.reduce<Record<string, PaymentStatusUI>>((acc, payment) => {
-            acc[payment.id] = payment.status;
-            return acc;
-          }, {}),
-        );
-        setPagination(response.pagination || {
+        transformed = response.data.map(transformPaiement);
+      }
+
+      // Merge mock accesses as Virtual Visit Payments
+      const virtualPayments: PaymentRecord[] = accesses.map((acc) => ({
+        id: `virtual-${acc.id}`,
+        reference: `V360-${acc.id.substring(0, 6).toUpperCase()}`,
+        tenantName: acc.requester || 'Visiteur Inconnu',
+        propertyTitle: `Visite Virtuelle (${acc.propertyId})`,
+        amount: 200,
+        month: new Date(acc.createdAt).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
+        channel: 'mobile_money',
+        status: 'success',
+        createdAt: acc.createdAt,
+      }));
+
+      // In real life, we should filter the mock ones by the active filters
+      let merged = [...transformed, ...virtualPayments];
+
+      // Apply frontend filters
+      if (paymentStatusFilter !== 'all') {
+         merged = merged.filter((p) => p.status === paymentStatusFilter);
+      }
+      if (paymentTypeFilter !== 'all') {
+         merged = merged.filter((p) => p.channel === paymentTypeFilter);
+      }
+
+      setPayments(merged);
+      setNextStatusByPayment(
+        merged.reduce<Record<string, PaymentStatusUI>>((acc, payment) => {
+          acc[payment.id] = payment.status;
+          return acc;
+        }, {}),
+      );
+      
+      const isResponseOk = response.success && response.pagination;
+      setPagination(
+        isResponseOk ? response.pagination! : {
           current_page: 1,
           total_pages: 1,
-          total_count: transformed.length,
-        });
-      } else {
-        setError(response.message || 'Erreur lors du chargement des paiements');
+          total_count: merged.length,
+        }
+      );
+      
+      if (!response.success && !response.data) {
+          console.warn('Backend failed to load payments:', response.message);
       }
     } catch (err) {
+      console.error(err);
       setError('Erreur de connexion au serveur');
     } finally {
       setLoading(false);
@@ -167,7 +198,7 @@ export default function AdminPaymentsPage() {
   // Initial load
   useEffect(() => {
     fetchPayments();
-  }, []);
+  }, [accesses]);
 
   // Refetch when filters change
   useEffect(() => {

@@ -29,6 +29,7 @@ export interface PublicBienPreview {
   espaces_exterieurs?: string[];
   accessibilite?: string[];
   photos?: PublicBienPhoto[];
+  has_virtual_tour?: boolean;
 
   // Legacy fields (some environments may still expose these)
   titre?: string;
@@ -75,6 +76,7 @@ export interface PublicBienDetail {
   accessibilite?: string[];
   usage_special?: string;
   photos?: PublicBienPhoto[];
+  has_virtual_tour?: boolean;
 }
 
 export interface PublicBienOwnerContact {
@@ -178,5 +180,11 @@ export class PublicService {
     }>
   > {
     return apiClient.get(`/public/biens/${bienId}/avis/`);
+  }
+
+  // Récupérer la config d'une visite virtuelle (sécurisé par token)
+  static async getVirtualTourConfig(token: string): Promise<StandardApiResponse<any>> {
+    // On passe le token en paramètre de requête car MonAccesVisiteView le supporte maintenant
+    return apiClient.get('/visites/mon-acces/', { token });
   }
 }

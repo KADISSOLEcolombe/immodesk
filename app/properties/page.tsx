@@ -1,22 +1,20 @@
 "use client";
 
 import { useMemo, useState, useEffect } from 'react';
-import { ChevronDown, ChevronUp, SlidersHorizontal, X, ArrowLeft } from 'lucide-react';
+import { X } from 'lucide-react';
 import PropertyCard from '@/components/PropertyCard';
 import { Property } from '@/data/properties';
-import Link from 'next/link';
 import { PublicBienPreview, PublicService } from '@/lib/public-service';
+import { useFilters } from '@/context/FilterContext';
 
 const parseCityFromAddress = (address?: string | null): string => {
   if (typeof address !== 'string' || address.trim().length === 0) {
     return 'Non spécifiée';
   }
-
   const chunks = address
     .split(',')
     .map((chunk) => chunk.trim())
     .filter(Boolean);
-
   return chunks.length > 0 ? chunks[chunks.length - 1] : 'Non spécifiée';
 };
 
@@ -37,24 +35,19 @@ const mapPublicBienToProperty = (bien: PublicBienPreview): Property => {
       ? bien.type_logement
       : 'Type non précisé';
   const fullAddress =
-    typeof bien.adresse_complete === 'string' && bien.adresse_complete.trim().length > 0
-      ? bien.adresse_complete
-      : typeof bien.adresse === 'string' && bien.adresse.trim().length > 0
-        ? bien.adresse
-        : 'Adresse non spécifiée';
+    typeof bien.adresse === 'string' && bien.adresse.trim().length > 0
+      ? bien.adresse
+      : 'Adresse non spécifiée';
   const imagesFromPhotos = Array.isArray(bien.photos)
     ? bien.photos
         .map((photo) => photo?.fichier)
         .filter((path): path is string => typeof path === 'string' && path.trim().length > 0)
     : [];
-  const imagesFromLegacy = Array.isArray(bien.images)
-    ? bien.images.filter((image): image is string => typeof image === 'string' && image.trim().length > 0)
-    : [];
 
   return {
     id: bien.id,
     title,
-    description: `${typeLogement} - ${title}`,
+    description: bien.description || `${typeLogement} - ${title}`,
     owner: {
       name: 'Propriétaire',
       phone: 'Non disponible',
@@ -73,18 +66,14 @@ const mapPublicBienToProperty = (bien: PublicBienPreview): Property => {
       rooms: toSafeNumber(bien.nb_pieces ?? bien.nombre_pieces),
       bedrooms: toSafeNumber(bien.nombre_chambres),
     },
-    images: imagesFromPhotos.length > 0 ? imagesFromPhotos : imagesFromLegacy,
+    images: imagesFromPhotos,
     status: 'vacant',
+    has_virtual_tour: bien.has_virtual_tour,
   };
 };
 
 export default function PropertiesPage() {
-  const [search, setSearch] = useState('');
-  const [minPrice, setMinPrice] = useState('');
-  const [maxPrice, setMaxPrice] = useState('');
-  const [selectedStatuses, setSelectedStatuses] = useState<Property['status'][]>([]);
-  const [roomsFilter, setRoomsFilter] = useState('all');
-  const [showFilters, setShowFilters] = useState(false);
+  const { filters } = useFilters();
   const [properties, setProperties] = useState<PublicBienPreview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -131,67 +120,49 @@ export default function PropertiesPage() {
     loadProperties();
   }, []);
 
-  // Convertir les données publiques backend vers le format Property pour le filtrage
   const convertedProperties = useMemo(() => {
     return properties.map((bien) => mapPublicBienToProperty(bien));
   }, [properties]);
 
   const filteredProperties = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
-    const parsedMin = minPrice ? Number(minPrice) : null;
-    const parsedMax = maxPrice ? Number(maxPrice) : null;
+    const normalizedSearch = filters.search.trim().toLowerCase();
+    const parsedMin = filters.minPrice ? Number(filters.minPrice) : null;
+    const parsedMax = filters.maxPrice ? Number(filters.maxPrice) : null;
 
     return convertedProperties.filter((property) => {
       const matchesSearch =
         normalizedSearch.length === 0 ||
         property.title.toLowerCase().includes(normalizedSearch) ||
-        property.address.city.toLowerCase().includes(normalizedSearch);
+        property.address.city.toLowerCase().includes(normalizedSearch) ||
+        property.address.street.toLowerCase().includes(normalizedSearch);
 
-      const matchesMinPrice = parsedMin === null || property.financial.rentAmount >= parsedMin;
-      const matchesMaxPrice = parsedMax === null || property.financial.rentAmount <= parsedMax;
+      const matchesPrice = (parsedMin === null || property.financial.rentAmount >= parsedMin) &&
+                          (parsedMax === null || property.financial.rentAmount <= parsedMax);
 
-      const matchesStatus =
-        selectedStatuses.length === 0 || selectedStatuses.includes(property.status);
-
+      const matchesType = filters.type === 'all' || 
+                         property.title.toLowerCase().includes(filters.type.toLowerCase()) || 
+                         property.description.toLowerCase().includes(filters.type.toLowerCase());
+      
       const matchesRooms =
-        roomsFilter === 'all'
+        filters.rooms === 'all'
           ? true
-          : roomsFilter === '5+'
-            ? property.features.rooms >= 5
-            : property.features.rooms === Number(roomsFilter);
+          : filters.rooms === '4+'
+            ? property.features.rooms >= 4
+            : property.features.rooms === Number(filters.rooms);
 
-      return matchesSearch && matchesMinPrice && matchesMaxPrice && matchesStatus && matchesRooms;
+      const matchesStanding = filters.standing === 'all' || 
+                             property.description.toLowerCase().includes(filters.standing.toLowerCase());
+
+      return matchesSearch && matchesPrice && matchesType && matchesRooms && matchesStanding;
     });
-  }, [search, minPrice, maxPrice, selectedStatuses, roomsFilter, convertedProperties]);
-
-  const toggleStatus = (status: Property['status']) => {
-    setSelectedStatuses((current) =>
-      current.includes(status) ? current.filter((value) => value !== status) : [...current, status],
-    );
-  };
-
-  const resetFilters = () => {
-    setSearch('');
-    setMinPrice('');
-    setMaxPrice('');
-    setSelectedStatuses([]);
-    setRoomsFilter('all');
-  };
-
-  const activeFilterCount = [
-    search.trim() !== '',
-    minPrice !== '',
-    maxPrice !== '',
-    selectedStatuses.length > 0,
-    roomsFilter !== 'all',
-  ].filter(Boolean).length;
+  }, [filters, convertedProperties]);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="flex h-[60vh] items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-zinc-900 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-zinc-600">Chargement des biens...</p>
+          <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="text-muted-foreground">Recherche des meilleurs biens pour vous...</p>
         </div>
       </div>
     );
@@ -199,15 +170,14 @@ export default function PropertiesPage() {
 
   if (error) {
     return (
-      <div className="mx-auto w-full max-w-3xl px-4 py-10">
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-center">
-          <p className="text-sm font-medium text-red-700">{error}</p>
+      <div className="mx-auto max-w-2xl py-20 px-4">
+        <div className="rounded-3xl border border-red-100 bg-red-50/50 p-8 text-center backdrop-blur-sm dark:bg-red-950/20 dark:border-red-900/50">
+          <p className="text-red-800 dark:text-red-400 font-medium mb-6">{error}</p>
           <button
-            type="button"
             onClick={() => window.location.reload()}
-            className="mt-4 inline-flex items-center rounded-lg border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 transition hover:bg-red-100"
+            className="rounded-xl bg-red-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-red-600/20 transition hover:bg-red-700"
           >
-            Réessayer
+            Réessayer le chargement
           </button>
         </div>
       </div>
@@ -215,171 +185,33 @@ export default function PropertiesPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-7xl">
-      {/* En-tête */}
-      <div className="mb-6">
-        <Link 
-          href="/" 
-          className="inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900 transition-colors mb-4"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Retour à l'accueil
-        </Link>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">Biens immobiliers</h1>
-            <p className="mt-1 text-sm text-zinc-500">
-              {filteredProperties.length} résultat{filteredProperties.length > 1 ? 's' : ''}
-              {activeFilterCount > 0 && (
-                <span className="ml-2 inline-flex items-center rounded-full bg-zinc-900 px-2 py-0.5 text-xs font-semibold text-white">
-                  {activeFilterCount} filtre{activeFilterCount > 1 ? 's' : ''}
-                </span>
-              )}
-            </p>
-          </div>
+    <div className="animate-premium-in">
+      <header className="mb-10 animate-in fade-in slide-in-from-top-4 duration-700">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl transition-colors duration-500">
+          Découvrez nos exclusivités
+        </h1>
+        <p className="mt-2 text-muted-foreground transition-colors duration-500">
+          Explorez une sélection curatée de biens immobiliers d'exception.
+        </p>
+      </header>
 
-          <div className="flex items-center gap-2 mr-16">
-          {activeFilterCount > 0 && (
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-zinc-200 bg-white px-3 text-xs font-medium text-zinc-600 transition hover:bg-zinc-100"
-            >
-              <X className="h-3.5 w-3.5" aria-hidden="true" />
-              Réinitialiser
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setShowFilters((v) => !v)}
-            className={`inline-flex h-9 items-center gap-2 rounded-xl px-4 text-sm font-medium transition ${
-              showFilters
-                ? 'bg-zinc-900 text-white shadow-sm'
-                : 'border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-100'
-            }`}
-          >
-            <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
-            Filtres
-            {showFilters ? (
-              <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
-            )}
-          </button>
+      {filteredProperties.length > 0 ? (
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          {filteredProperties.map((property) => (
+            <PropertyCard key={property.id} property={property} />
+          ))}
         </div>
-      </div>
-      </div>
-
-      {/* Panneau de filtres (collapsible) */}
-      {showFilters && (
-        <section className="mb-8 rounded-3xl border border-zinc-100 bg-white p-6 shadow-xl shadow-zinc-200/50 transition-all duration-300 sm:p-8">
-          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
-            {/* Recherche */}
-            <div className="space-y-3">
-              <label className="text-sm font-semibold text-zinc-900">Recherche</label>
-              <div className="relative group">
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Ville, quartier, type..."
-                  className="w-full h-12 rounded-2xl border border-zinc-200 bg-zinc-50 pl-11 pr-4 text-sm text-zinc-900 outline-none transition-all focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/10 placeholder:text-zinc-400"
-                />
-                <svg
-                  className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400 group-focus-within:text-zinc-900 transition-colors"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-            </div>
-
-            {/* Prix */}
-            <div className="space-y-3">
-              <label className="text-sm font-semibold text-zinc-900">Budget (FCFA)</label>
-              <div className="flex items-center gap-3">
-                <div className="relative w-full">
-                  <input
-                    type="number"
-                    min={0}
-                    value={minPrice}
-                    onChange={(event) => setMinPrice(event.target.value)}
-                    placeholder="Min"
-                    className="w-full h-12 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 text-sm text-zinc-900 outline-none transition-all focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/10 placeholder:text-zinc-400"
-                  />
-                </div>
-                <div className="h-px w-4 bg-zinc-300"></div>
-                <div className="relative w-full">
-                  <input
-                    type="number"
-                    min={0}
-                    value={maxPrice}
-                    onChange={(event) => setMaxPrice(event.target.value)}
-                    placeholder="Max"
-                    className="w-full h-12 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 text-sm text-zinc-900 outline-none transition-all focus:border-zinc-900 focus:bg-white focus:ring-4 focus:ring-zinc-900/10 placeholder:text-zinc-400"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Statut */}
-            <div className="space-y-3">
-              <label className="text-sm font-semibold text-zinc-900">Disponibilité</label>
-              <div className="flex flex-wrap gap-2">
-                {(['vacant', 'rented', 'maintenance'] as Property['status'][]).map((s) => {
-                  const isSelected = selectedStatuses.includes(s);
-                  const labels = { vacant: 'Disponible', rented: 'Loué', maintenance: 'Maintenance' };
-                  return (
-                    <button
-                      key={s}
-                      onClick={() => toggleStatus(s)}
-                      className={`inline-flex h-9 items-center rounded-xl border px-3 text-xs font-medium transition-all ${
-                        isSelected
-                          ? 'border-zinc-900 bg-zinc-900 text-white shadow-md shadow-zinc-900/20'
-                          : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'
-                      }`}
-                    >
-                      {labels[s]}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Pièces */}
-            <div className="space-y-3">
-              <label className="text-sm font-semibold text-zinc-900">Pièces</label>
-              <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                {['all', '1', '2', '3', '4', '5+'].map((v) => {
-                  const isSelected = roomsFilter === v;
-                  return (
-                    <button
-                      key={v}
-                      onClick={() => setRoomsFilter(v)}
-                      className={`flex h-10 min-w-10 items-center justify-center rounded-full border text-sm font-medium transition-all ${
-                        isSelected
-                          ? 'border-zinc-900 bg-zinc-900 text-white shadow-md shadow-zinc-900/20'
-                          : 'border-zinc-200 bg-white text-zinc-600 hover:border-zinc-300 hover:bg-zinc-50'
-                      }`}
-                    >
-                      {v === 'all' ? 'Tout' : v}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-900">
+            <X className="h-10 w-10 text-zinc-400" />
           </div>
-        </section>
+          <h2 className="text-xl font-bold text-foreground transition-colors duration-500">Aucun résultat trouvé</h2>
+          <p className="mt-2 text-muted-foreground transition-colors duration-500">
+            Essayez de modifier vos filtres pour trouver ce que vous cherchez.
+          </p>
+        </div>
       )}
-
-      {/* Grille des biens */}
-      <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredProperties.map((property) => (
-          <PropertyCard key={property.id} property={property} />
-        ))}
-      </section>
     </div>
   );
 }
