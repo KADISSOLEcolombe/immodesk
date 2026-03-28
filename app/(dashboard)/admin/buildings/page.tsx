@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { Building2, Eye, Loader2, Pencil, PlusCircle, Trash2, X } from 'lucide-react';
-import { Bien, Immeuble } from '@/types/api';
+import { Bien, Immeuble, TypeLogement } from '@/types/api';
 import { useNotifications } from '@/components/notifications/NotificationProvider';
 import { PatrimoineService } from '@/lib/patrimoine-service';
 import { UserResponse, UserService } from '@/lib/user-service';
@@ -101,7 +101,6 @@ export default function AdminBuildingsPage() {
   };
 
   const openCreateModal = () => {
-    console.log('openCreateModal appelé');
     clearMessages();
     resetForm();
     setIsModalOpen(true);
@@ -141,35 +140,35 @@ export default function AdminBuildingsPage() {
       return;
     }
 
+    // Payload aligné sur le modèle Django (apps/patrimoine/models.py)
     const payload: Partial<Immeuble> = {
       proprietaire: formState.proprietaire,
       nom: formState.nom.trim(),
       adresse: formState.adresse.trim(),
-      description: formState.description.trim() || '',
-      lien_maps: formState.lien_maps.trim() || '',
-      type_logement: (formState.type_logement || 'studio') as Immeuble['type_logement'],
-      latitude: null,
-      longitude: null,
-      nombre_etages: null,
-      annee_construction: null,
+      description: formState.description.trim() || "",
+      lien_maps: formState.lien_maps.trim() || "",
+      type_logement: (formState.type_logement as TypeLogement) || "autre",
+      // Champs par défaut pour garantir la validité du serializer
+      espaces_exterieurs: [],
+      accessibilite: [],
+      etage: "",
+      usage_special: ""
     };
 
     try {
       setIsSubmitting(true);
-      console.log('Payload envoyé à l\'API:', payload);
       const response = editingId
         ? await PatrimoineService.updateImmeuble(editingId, payload)
         : await PatrimoineService.createImmeuble(payload);
 
       if (!response.success) {
-        console.error('Erreur API complète:', response);
         const errorDetails = response.errors && response.errors.length > 0 
-          ? response.errors.map(e => e.message).join(', ')
+          ? response.errors.map(e => `${e.field ? e.field + ': ' : ''}${e.message}`).join(', ')
           : '';
         addNotification({ 
           type: 'alerte', 
           titre: response.message || 'Sauvegarde impossible.', 
-          message: errorDetails || ''
+          message: errorDetails || 'Vérifiez les champs obligatoires.'
         });
         return;
       }
@@ -178,9 +177,14 @@ export default function AdminBuildingsPage() {
       closeModal();
       await loadBuildings();
       addNotification({ type: 'info', titre: label, message: '' });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erreur sauvegarde immeuble admin:', err);
-      addNotification({ type: 'alerte', titre: 'Erreur technique lors de la sauvegarde.', message: '' });
+      console.error('Détail erreur:', err?.response?.data || err);
+      addNotification({ 
+        type: 'alerte', 
+        titre: 'Erreur technique lors de la sauvegarde.', 
+        message: err?.response?.data?.detail || err?.message || 'Erreur inconnue'
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -428,10 +432,12 @@ export default function AdminBuildingsPage() {
                   <option value="t1">T1</option>
                   <option value="t2">T2</option>
                   <option value="t3">T3</option>
-                  <option value="t4">T4</option>
-                  <option value="house">Maison</option>
+                  <option value="t4_plus">T4+</option>
+                  <option value="duplex">Duplex</option>
+                  <option value="loft">Loft</option>
                   <option value="villa">Villa</option>
-                  <option value="commercial">Commercial</option>
+                  <option value="maison">Maison</option>
+                  <option value="autre">Autre</option>
                 </select>
               </label>
 

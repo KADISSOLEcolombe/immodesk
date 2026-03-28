@@ -15,34 +15,15 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
-
-  const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    e.preventDefault();
-    const el = document.querySelector(href);
-    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    setMobileOpen(false);
-  };
-
-  return (
-    <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 border-b border-transparent ${
-        scrolled
-          ? 'bg-white/90 dark:bg-[#020617]/90 backdrop-blur-xl border-zinc-200/50 dark:border-white/5 py-3 shadow-lg shadow-black/5'
-          : 'bg-transparent py-5'
-      }`}
-    >
-      <div className="container mx-auto px-6 flex items-center justify-between h-20">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <Home className="w-6 h-6 text-blue-500 dark:text-amber-300 transition-transform group-hover:scale-110 group-hover:rotate-6" strokeWidth={1.5} />
-          <span className={`text-[10px] font-bold tracking-widest uppercase transition-all duration-300 hover:text-amber-500 hover:scale-105 ${
-            scrolled ? 'text-zinc-600 dark:text-zinc-400' : 'text-white/90'
-          }`}>IMMODESK</span>
+      {/* Desktop Menu */}
+      
+      {/* Reservation Button */}
+      <div className="hidden md:block mr-16">
+        <Link
+          href="/login"
+          className="px-6 py-2 border border-amber-200 text-amber-100 text-xs font-medium tracking-widest uppercase hover:bg-amber-200 hover:text-black transition-colors"
+        >
+          Connexion
         </Link>
 
         {/* Desktop Links */}

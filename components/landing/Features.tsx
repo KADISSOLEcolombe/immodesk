@@ -6,33 +6,23 @@ import { useEffect, useRef, useState } from 'react';
 const features = [
   {
     icon: MapPin,
-    title: 'Emplacements stratégiques',
-    description: 'Des biens situés dans les quartiers les plus prisés, à proximité de tous les services essentiels.',
+    title: 'Situé au cœur de la ville',
+    description: 'Idéalement situé au cœur de la ville pour un accès facile et pratique.',
   },
   {
     icon: Armchair,
-    title: 'Confort & Modernité',
-    description: 'Des espaces luxueux, entièrement équipés avec des finitions haut de gamme pour votre bien-être.',
-  },
-  {
-    icon: Shield,
-    title: 'Sécurité garantie',
-    description: 'Des transactions sécurisées et un accompagnement juridique complet pour votre tranquillité.',
+    title: 'Luxueux, moderne et confortable',
+    description: 'Profitez d’un espace luxueux, moderne et entièrement équipé pour votre confort.',
   },
   {
     icon: UserCheck,
-    title: 'Service personnalisé',
-    description: 'Une équipe dédiée et réactive, à votre écoute pour répondre à toutes vos exigences.',
+    title: 'Personnel accueillant et chaleureux',
+    description: 'Notre personnel accueillant et chaleureux vous garantit un séjour agréable à chaque fois.',
   },
   {
     icon: Tag,
-    title: 'Prix compétitifs',
-    description: 'Des tarifs transparents et les meilleures offres du marché immobilier adaptées à vos besoins.',
-  },
-  {
-    icon: Clock,
-    title: 'Visite virtuelle 360°',
-    description: 'Explorez nos biens depuis chez vous grâce à notre technologie de visite immersive en temps réel.',
+    title: 'Meilleurs prix et offres exceptionnelles',
+    description: 'Profitez de prix imbattables avec des offres exceptionnelles rien que pour vous.',
   },
 ];
 

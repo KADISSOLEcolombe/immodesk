@@ -288,8 +288,16 @@ class ApiClient {
   }
 
   async post<T>(url: string, data?: any): Promise<StandardApiResponse<T>> {
-    const response: AxiosResponse<StandardApiResponse<T>> = await this.client.post(url, data);
-    return response.data;
+    try {
+      const response: AxiosResponse<StandardApiResponse<T>> = await this.client.post(url, data);
+      return response.data;
+    } catch (error: any) {
+      if (error.response?.status === 400 && error.response?.data) {
+        // Transformer l'erreur 400 en réponse structurée
+        return error.response.data as StandardApiResponse<T>;
+      }
+      throw error;
+    }
   }
 
   async put<T>(url: string, data?: any): Promise<StandardApiResponse<T>> {

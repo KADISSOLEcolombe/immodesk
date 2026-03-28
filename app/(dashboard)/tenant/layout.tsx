@@ -11,8 +11,7 @@ const tenantNav = [
   { href: '/tenant', label: 'Mon bail', icon: LayoutDashboard, exact: true },
   { href: '/tenant/payment', label: 'Payer mon loyer', icon: CreditCard, exact: false },
   { href: '/tenant/history', label: 'Historique', icon: FileText, exact: false },
-  { href: '/tenant/notifications', label: 'Notifications', icon: Bell, exact: false },
-  { href: '/tenant/contact', label: 'Contact', icon: Mail, exact: false },
+  // { href: '/tenant/contact', label: 'Contact', icon: Mail, exact: false },
   // { href: '/properties', label: 'Catalogue des biens', icon: Building2, exact: false },
 ];
 
