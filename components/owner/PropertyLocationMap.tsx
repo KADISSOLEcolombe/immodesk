@@ -23,7 +23,7 @@ export default function PropertyLocationMap({ points }: PropertyLocationMapProps
   const currentPoint = points.find((point) => point.isCurrent) ?? points[0];
 
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-200">
+    <div className="overflow-hidden rounded-xl border border-border transition-colors duration-500">
       <MapContainer
         center={[currentPoint.latitude, currentPoint.longitude]}
         zoom={14}
@@ -46,9 +46,9 @@ export default function PropertyLocationMap({ points }: PropertyLocationMapProps
           >
             <Popup>
               <div className="text-sm">
-                <p className="font-semibold text-zinc-900">{point.label}</p>
-                <p className="text-zinc-600">{point.address}</p>
-                {point.isCurrent ? <p className="mt-1 text-xs text-red-600">Bien actuel</p> : null}
+                <p className="font-semibold text-foreground transition-colors duration-500">{point.label}</p>
+                <p className="text-muted-foreground">{point.address}</p>
+                {point.isCurrent ? <p className="mt-1 text-xs text-red-600 dark:text-red-400 font-medium tracking-tight uppercase">Bien actuel</p> : null}
               </div>
             </Popup>
           </CircleMarker>

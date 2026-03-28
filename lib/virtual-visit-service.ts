@@ -46,11 +46,31 @@ export class VirtualVisitService {
     return await apiClient.get<CompteEphemere[]>('/visites/comptes-ephemeres/');
   }
 
+  static async getTransactions(): Promise<StandardApiResponse<any[]>> {
+    return await apiClient.get<any[]>('/visites/transactions/');
+  }
+
   static async updateCompteEphemere(id: string, data: Partial<CompteEphemere>): Promise<StandardApiResponse<CompteEphemere>> {
     return await apiClient.put<CompteEphemere>(`/visites/comptes-ephemeres/${id}/`, data);
   }
 
   static async deleteCompteEphemere(id: string): Promise<StandardApiResponse<void>> {
     return await apiClient.delete<void>(`/visites/comptes-ephemeres/${id}/`);
+  }
+
+  static async demanderVisite(pk: string, data: {
+    email_visiteur: string;
+    nom_visiteur?: string;
+    moyen_paiement: string;
+    numero_telephone?: string;
+    numero_carte?: string;
+    date_expiration?: string;
+    cvv?: string;
+  }): Promise<StandardApiResponse<any>> {
+    return await apiClient.post<any>(`/visites/${pk}/demander/`, data);
+  }
+
+  static async connexion(identifiant: string, code: string): Promise<StandardApiResponse<{ token: string }>> {
+    return await apiClient.post<{ token: string }>('/visites/connexion/', { identifiant, code });
   }
 }

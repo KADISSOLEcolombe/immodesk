@@ -22,6 +22,7 @@ export interface Property {
   };
   images: string[];
   status: 'vacant' | 'rented' | 'maintenance';
+  has_virtual_tour?: boolean;
 }
 
 export const mockProperties: Property[] = [

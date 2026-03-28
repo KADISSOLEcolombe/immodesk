@@ -83,7 +83,7 @@
 
     #header-separator { flex: 1; }
 
-    #btn-edit-link {
+    #btn-return-link {
       pointer-events: auto;
       display: flex; align-items: center; gap: 6px;
       padding: 6px 12px;
@@ -98,7 +98,7 @@
       transition: all 0.15s;
       backdrop-filter: blur(8px);
     }
-    #btn-edit-link:hover { color: var(--text); border-color: rgba(240,163,10,0.4); }
+    #btn-return-link:hover { color: var(--text); border-color: rgba(240,163,10,0.4); }
 
     /* ── Minimap des scènes (bas gauche) ────────────────────────── */
     #scene-map {
@@ -261,10 +261,50 @@
       border: 1px solid var(--border);
     }
 
+    /* ── Modal Confirmation ─────────────────────────────────────────── */
+    #exit-confirm-modal {
+      position: fixed; inset: 0;
+      background: rgba(8, 12, 18, 0.8);
+      display: none; align-items: center; justify-content: center;
+      z-index: 200; backdrop-filter: blur(8px);
+    }
+    #exit-confirm-modal.visible { display: flex; animation: fadeIn 0.2s ease; }
+    
+    .exit-modal-content {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px; max-width: 400px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      animation: zoomIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    .exit-icon {
+      color: var(--accent); margin-bottom: 20px;
+      display: inline-flex; justify-content: center;
+      padding: 12px; border-radius: 50%;
+      background: rgba(240,163,10,0.1); border: 1px solid rgba(240,163,10,0.2);
+    }
+    
+    .exit-modal-content h3 { font-size: 18px; font-weight: 600; margin-bottom: 12px; color: var(--text); }
+    .exit-modal-content p { font-size: 14px; color: var(--muted); margin-bottom: 28px; line-height: 1.5; }
+    
+    .exit-actions { display: flex; gap: 12px; justify-content: center; flex-direction: column; sm:flex-row; }
+    .exit-actions button {
+      padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.15s; font-family: var(--font-sans);
+    }
+    #btn-exit-cancel { background: var(--text); color: var(--bg); border: none; }
+    #btn-exit-cancel:hover { opacity: 0.9; }
+    #btn-exit-confirm { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    #btn-exit-confirm:hover { background: rgba(239,68,68,0.1); color: var(--red); border-color: rgba(239,68,68,0.3); }
+
     /* ── Animations ─────────────────────────────────────────────── */
     @keyframes spin       { to { transform: rotate(360deg); } }
     @keyframes fadeInDown { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
     @keyframes fadeInUp   { from { opacity:0; transform:translate(-50%,8px); } to { opacity:1; transform:translate(-50%,0); } }
+    @keyframes fadeIn     { from { opacity:0; } to { opacity:1; } }
+    @keyframes zoomIn     { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
   </style>
 </head>
 <body>
@@ -284,13 +324,12 @@
     </div>
     <span id="header-scene-name"></span>
     <div id="header-separator"></div>
-    <a id="btn-edit-link" href="/tour/pages/editor.html" title="Ouvrir l'éditeur">
+    <button id="btn-return-link" title="Retourner à la page précédente">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
-        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        <path d="M15 18l-6-6 6-6"/>
       </svg>
-      Éditeur
-    </a>
+      Retour
+    </button>
   </div>
 
   <!-- Minimap scènes -->
@@ -341,6 +380,25 @@
     <div class="error-title">Impossible de charger la visite</div>
     <div id="error-msg" class="error-msg"></div>
     <div class="error-hint">Usage : /pages/viewer.html?tour=mon-fichier.json</div>
+  </div>
+
+  <!-- Modal Confirmation de Sortie -->
+  <div id="exit-confirm-modal">
+    <div class="exit-modal-content">
+      <div class="exit-icon">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+          <line x1="12" y1="9" x2="12" y2="13"/>
+          <line x1="12" y1="17" x2="12.01" y2="17"/>
+        </svg>
+      </div>
+      <h3>Avez-vous fini votre visite ?</h3>
+      <p>Votre accès est à usage unique. Il expirera et votre visite ne sera plus valide si vous quittez cette page.</p>
+      <div class="exit-actions">
+        <button id="btn-exit-cancel">Continuer la visite</button>
+        <button id="btn-exit-confirm">Quitter définitivement</button>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="/tour/scripts/viewer.js"></script>

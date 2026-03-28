@@ -1,15 +1,17 @@
 "use client";
 
-import { FormEvent, useMemo, useRef, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { mockProperties } from '@/data/properties';
 import { useVirtualVisits } from '@/components/virtual-visits/VirtualVisitProvider';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { ArrowLeft, CheckCircle2, Code, KeyRound, Phone, ShieldCheck, X } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Code, CreditCard, KeyRound, Mail, Phone, ShieldCheck, Smartphone, X } from 'lucide-react';
 
 import { Tour360Viewer } from '@/components/virtual-visits/Tour360Viewer';
 import { convertTourAssetToTourData } from '@/lib/tour360/adapters';
+import demoTourData from '../../../public/tour/visite-demo-export.json';
+import { VirtualVisitService } from '@/lib/virtual-visit-service';
 
 export default function VirtualVisitPage() {
   const params = useParams<{ id: string }>();
@@ -20,26 +22,58 @@ export default function VirtualVisitPage() {
   const router = useRouter();
 
   const [code, setCode] = useState(initialCode);
-  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'mobile' | 'card'>('mobile');
+  const [paymentPhone, setPaymentPhone] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardExpiry, setCardExpiry] = useState('');
+  const [cardCvc, setCardCvc] = useState('');
   const [granted, setGranted] = useState(false);
   const [error, setError] = useState('');
   const [activeAccessId, setActiveAccessId] = useState<string | null>(null);
   const [popupStep, setPopupStep] = useState<1 | 2 | 3>(1);
   const [isPaying, setIsPaying] = useState(false);
   const [paymentConfirmation, setPaymentConfirmation] = useState<string>('');
+  const [visitPrice, setVisitPrice] = useState<number>(200);
+  const [realBienId, setRealBienId] = useState<string | null>(null);
   const paymentSequenceRef = useRef(0);
 
   const visitId = String(params.id || '');
   const [visitIdInput, setVisitIdInput] = useState(visitId);
 
-  const linkedAccess = useMemo(() => accesses.find((item) => item.id === visitId), [accesses, visitId]);
-  const property = useMemo(() => mockProperties.find((item) => item.id === linkedAccess?.propertyId), [linkedAccess, accesses]);
-  const propertyTour = useMemo(() => tours.find((item) => item.propertyId === linkedAccess?.propertyId), [tours, linkedAccess]);
+  const currentId = activeAccessId || visitIdInput || visitId;
+  const linkedAccess = useMemo(() => accesses.find((item) => item.id === currentId), [accesses, currentId]);
+  const property = useMemo(() => mockProperties.find((item) => item.id === linkedAccess?.propertyId), [linkedAccess]);
+  const propertyTour = useMemo(() => {
+    const found = tours.find((item) => item.propertyId === linkedAccess?.propertyId);
+    return found || tours[0]; // Fallback if backend property ID doesn't match mock tour IDs
+  }, [tours, linkedAccess]);
   
+  useEffect(() => {
+    const fetchConfig = async () => {
+      const vid = params.id as string;
+      if (vid && vid.length > 20) { // UUID length check
+        try {
+          const resp = await VirtualVisitService.getVisite(vid);
+          if (resp.success && resp.data) {
+            if (resp.data.prix) setVisitPrice(Number(resp.data.prix));
+            if (resp.data.bien_id || (resp.data.bien && typeof resp.data.bien === 'object' && (resp.data.bien as any).id)) {
+              setRealBienId(resp.data.bien_id || (resp.data.bien as any).id);
+            }
+          }
+        } catch (err) {
+          console.error("Could not fetch visit price:", err);
+        }
+      }
+    };
+    fetchConfig();
+  }, [params.id]);
+
   // Conversion pour le viewer
   const tourData = useMemo(() => {
     if (propertyTour) {
-      return convertTourAssetToTourData(propertyTour);
+      // Return the multi-scene demo data so the engine shows the scenes bottom-left
+      return demoTourData as any;
     }
     // Fallback data si pas de tour configuré
     return null;
@@ -48,60 +82,124 @@ export default function VirtualVisitPage() {
   const inferredPropertyId =
     linkedAccess?.propertyId ?? propertyTour?.propertyId ?? tours[0]?.propertyId ?? mockProperties[0]?.id ?? '';
 
-  const handleUnlock = (event: FormEvent<HTMLFormElement>) => {
+  const handleUnlock = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setError('');
 
-    const result = validateAccess(visitIdInput, code);
+    // Tenter d'utiliser l'API réelle
+    try {
+      const resp = await VirtualVisitService.connexion(visitIdInput.trim(), code.trim());
+      if (resp.success && resp.data?.token) {
+        // Optionnel : stocker le token visiteur pour les requêtes futures si nécessaire
+        localStorage.setItem('immodesk.visiteur_token', resp.data.token);
+        
+        // On considère l'accès comme validé
+        setGranted(true);
+        recordVisitOpen(visitIdInput.trim());
+        
+        // Redirection vers le viewer
+        if (tourData) {
+          sessionStorage.setItem('tour360_data', JSON.stringify(tourData));
+          sessionStorage.setItem('tour_return_url', window.location.href);
+          window.location.href = '/tour/pages/viewer.html?tour=__session__';
+        }
+        return;
+      }
+    } catch (err) {
+      console.warn("Backend auth failed or unavailable, falling back to local validation.", err);
+    }
+
+    // Fallback locale (simulation ou si l'accès vient d'être généré localement)
+    const result = validateAccess(visitIdInput.trim(), code.trim());
     if (!result.ok || !result.access) {
       setGranted(false);
       setError(result.message);
       return;
     }
 
-    setError('');
-    setGranted(true);
     setActiveAccessId(result.access.id);
     recordVisitOpen(result.access.id);
+
+    if (tourData) {
+      sessionStorage.setItem('tour360_data', JSON.stringify(tourData));
+      sessionStorage.setItem('tour_return_url', document.referrer || '/properties');
+      window.location.href = '/tour/pages/viewer.html?tour=__session__';
+    } else {
+      setGranted(true);
+    }
   };
 
-  const handlePayNow = (event: FormEvent<HTMLFormElement>) => {
+  const handlePayNow = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-
-    const seq = ++paymentSequenceRef.current;
 
     if (!inferredPropertyId) {
       setError('Impossible de déterminer le bien à visiter.');
       return;
     }
 
-    const mmPhone = phone.trim();
-    if (!mmPhone) {
-      setError('Renseigne ton numéro Mobile Money.');
-      return;
+    if (paymentMethod === 'mobile') {
+      if (!paymentPhone.trim()) {
+        setError('Le numéro de téléphone pour le paiement est requis.');
+        return;
+      }
+    } else {
+      if (!cardNumber.trim() || !cardExpiry.trim() || !cardCvc.trim()) {
+        setError('Toutes les informations de votre carte sont requises.');
+        return;
+      }
     }
 
     setError('');
     setIsPaying(true);
 
-    // Simulation de paiement Mobile Money avant d'afficher l'accès.
-    window.setTimeout(() => {
-      // Si l'ID/code ne viennent pas déjà de l'URL, on les génère après paiement.
-      const paymentRef = `MM-${Date.now().toString().slice(-6)}`;
-      if (!visitIdInput.trim() || !code.trim()) {
-        const created = generateTemporaryAccess(inferredPropertyId, mmPhone);
-        setVisitIdInput(created.id);
-        setCode(created.code);
-      }
+    try {
+      // On tente d'appeler le backend réel
+      const response = await VirtualVisitService.demanderVisite(inferredPropertyId, {
+        email_visiteur: email.trim(),
+        moyen_paiement: paymentMethod === 'mobile' ? 'mixx_by_yas' : 'carte_bancaire',
+        numero_telephone: paymentMethod === 'mobile' ? paymentPhone.trim() : undefined,
+        numero_carte: paymentMethod === 'card' ? cardNumber.trim() : undefined,
+        date_expiration: paymentMethod === 'card' ? cardExpiry.trim() : undefined,
+        cvv: paymentMethod === 'card' ? cardCvc.trim() : undefined,
+      });
 
-      setIsPaying(false);
-      setPaymentConfirmation(`Paiement confirmé ! Accès à la visite activé. (Réf: ${paymentRef})`);
-
-      // Petit délai pour afficher clairement la confirmation sur l'étape 2.
-      window.setTimeout(() => {
-        if (paymentSequenceRef.current !== seq) return;
+      if (response.success) {
+        if (response.data?.__debug__identifiant) {
+          setVisitIdInput(response.data.__debug__identifiant);
+          setCode(response.data.__debug__code);
+        }
+        
+        setPaymentConfirmation(
+          `Paiement validé ! Vos accès ont été envoyés par Email (et SMS si Mobile Money utilisé).`
+        );
         setPopupStep(3);
-      }, 450);
-    }, 900);
+      } else {
+        setError(response.message || 'Le paiement a échoué via le serveur.');
+      }
+    } catch (err) {
+      console.error("Backend error, falling back to simulation:", err);
+      const seq = ++paymentSequenceRef.current;
+      window.setTimeout(() => {
+        const methodPrefix = paymentMethod === 'mobile' ? 'MM' : 'CARD';
+        const paymentRef = `${methodPrefix}-${Date.now().toString().slice(-6)}`;
+        
+        if (!visitIdInput.trim() || !code.trim()) {
+          const created = generateTemporaryAccess(inferredPropertyId, email.trim());
+          setVisitIdInput(created.id);
+          setCode(created.code);
+        }
+
+        setIsPaying(false);
+        setPaymentConfirmation(`Paiement confirmé (Simulation) ! Accès activé. (Réf: ${paymentRef})`);
+        
+        window.setTimeout(() => {
+          if (paymentSequenceRef.current !== seq) return;
+          setPopupStep(3);
+        }, 450);
+      }, 900);
+    } finally {
+      setIsPaying(false);
+    }
   };
 
   const handleContact = () => {
@@ -166,7 +264,14 @@ export default function VirtualVisitPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-900/60 backdrop-blur-md animate-in fade-in duration-300">
             <div className="relative w-full max-w-4xl rounded-[28px] shadow-2xl ring-1 ring-black/5 overflow-hidden bg-white animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
               <button
-                onClick={() => router.push('/visit')}
+                onClick={() => {
+                  const targetId = realBienId || inferredPropertyId;
+                  if (targetId) {
+                    router.push(`/properties/${targetId}`);
+                  } else {
+                    router.push('/visit');
+                  }
+                }}
                 className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/10 hover:bg-black/20 backdrop-blur-sm text-zinc-900 transition-all hover:scale-110"
                 aria-label="Fermer"
               >
@@ -205,75 +310,142 @@ export default function VirtualVisitPage() {
               <div className="px-6 py-6 sm:px-10 sm:py-8">
                 <div className="mx-auto max-w-2xl">
                   <div className="rounded-3xl border border-zinc-100 bg-white p-4 sm:p-5 shadow-sm">
-                    {/* Step 1 */}
-                    {popupStep === 1 && (
-                      <div className="space-y-4">
+                    {/* Step 1 & 2 combined - Main Payment form */}
+                    {(popupStep === 1 || popupStep === 2) && (
+                      <form onSubmit={handlePayNow} className="space-y-6">
                         <div className="rounded-2xl bg-zinc-50 p-4 ring-1 ring-zinc-200">
-                          <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                            Étape 1
-                          </div>
-                          <h3 className="mt-2 text-lg font-bold text-zinc-900">
-                            Voici le bien que vous souhaitez visiter virtuellement
+                          <h3 className="text-lg font-bold text-zinc-900">
+                            Accès à la Visite Virtuelle
                           </h3>
                           <p className="mt-1 text-sm text-zinc-600">
-                            {property?.title ?? 'Bien'} {property?.address?.city ? `• ${property.address.city}` : ''}
+                            {property?.title ?? 'Bien'} • <span className="font-bold text-zinc-900">{visitPrice} FCFA</span>
                           </p>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setError('');
-                            setPaymentConfirmation('');
-                            paymentSequenceRef.current += 1;
-                            setPopupStep(2);
-                          }}
-                          className="w-full inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-5 text-sm font-bold text-white shadow-lg shadow-zinc-900/20 transition hover:bg-zinc-800 focus:outline-none focus:ring-4 focus:ring-zinc-900/10"
-                        >
-                          <KeyRound className="h-4 w-4" aria-hidden="true" />
-                          Accéder à la visite
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Step 2 */}
-                    {popupStep === 2 && (
-                      <form onSubmit={handlePayNow} className="space-y-4">
-                        <div className="rounded-2xl bg-zinc-50 p-4 ring-1 ring-zinc-200">
-                          <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-                            Étape 2
+                        {/* Direct Email - Required for account */}
+                        <div className="space-y-2">
+                          <label className="block text-sm font-bold text-zinc-800">
+                            Votre Adresse Email
+                          </label>
+                          <div className="relative">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
+                            <input
+                              type="email"
+                              required
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              placeholder="votre@email.com"
+                              className="h-12 w-full rounded-2xl border border-zinc-200 bg-white pl-12 pr-4 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 focus:ring-4 focus:ring-zinc-900/10 placeholder:text-zinc-300"
+                            />
                           </div>
-                          <h3 className="mt-2 text-lg font-bold text-zinc-900">
-                            Vous êtes sur le point de visiter ce bien en réalité virtuelle.
-                          </h3>
-                          <p className="mt-1 text-sm text-zinc-600">
-                            L’accès à la visite est disponible pour seulement <span className="font-bold text-zinc-900">200 FCFA</span>.
+                          <p className="text-[10px] text-zinc-400 leading-tight">
+                            Vos identifiants de connexion vous seront envoyés immédiatement après le paiement.
                           </p>
                         </div>
 
-                        <label className="block text-sm font-semibold text-zinc-800">
-                          <span className="inline-flex items-center gap-2">
-                            <Phone className="h-4 w-4 text-zinc-400" aria-hidden="true" />
-                            Numéro de téléphone (paiement Mobile Money)
-                          </span>
-                          <input
-                            type="tel"
-                            value={phone}
-                            onChange={(event) => setPhone(event.target.value)}
-                            placeholder="Ex: 90 00 00 00"
-                            className="mt-3 h-12 w-full rounded-2xl border border-zinc-200 bg-white px-4 text-sm text-zinc-900 outline-none transition focus:border-zinc-900 focus:ring-4 focus:ring-zinc-900/10"
-                          />
-                        </label>
+                        {/* Payment Method Selector */}
+                        <div className="space-y-3">
+                          <p className="text-sm font-bold text-zinc-900">
+                             Mode de paiement
+                          </p>
+                          <div className="grid grid-cols-2 gap-3">
+                             <button
+                               type="button"
+                               onClick={() => setPaymentMethod('mobile')}
+                               className={`flex items-center justify-center gap-2 py-3 px-3 rounded-2xl border transition-all ${
+                                 paymentMethod === 'mobile' ? 'border-zinc-900 bg-zinc-900 text-white shadow-lg' : 'border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300 shadow-sm'
+                               }`}
+                             >
+                                <Smartphone className="w-4 h-4" />
+                                <span className="text-xs font-bold">Mobile Money</span>
+                             </button>
+                             <button
+                               type="button"
+                               onClick={() => setPaymentMethod('card')}
+                               className={`flex items-center justify-center gap-2 py-3 px-3 rounded-2xl border transition-all ${
+                                 paymentMethod === 'card' ? 'border-zinc-900 bg-zinc-900 text-white shadow-lg' : 'border-zinc-200 bg-white text-zinc-500 hover:border-zinc-300 shadow-sm'
+                               }`}
+                             >
+                                <CreditCard className="w-4 h-4" />
+                                <span className="text-xs font-bold">Carte Bancaire</span>
+                             </button>
+                          </div>
+                        </div>
+
+                        {/* Payment Details Form */}
+                        <div className="mt-4 p-4 rounded-2xl bg-zinc-50 border border-zinc-100 space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                           {paymentMethod === 'mobile' ? (
+                             <div className="space-y-3">
+                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest">
+                                   Numéro de paiement (Mixx ou Moov)
+                                </label>
+                                <div className="relative">
+                                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                                   <input
+                                     type="tel"
+                                     value={paymentPhone}
+                                     onChange={(e) => setPaymentPhone(e.target.value)}
+                                     placeholder="90 00 00 00"
+                                     className="w-full pl-11 pr-4 h-12 rounded-xl bg-white border border-zinc-200 text-sm font-medium text-zinc-900 focus:border-zinc-900 focus:ring-4 focus:ring-zinc-900/5 outline-none transition-all"
+                                   />
+                                </div>
+                             </div>
+                           ) : (
+                             <div className="space-y-4">
+                                <div className="space-y-2">
+                                   <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest">
+                                      Numéro de carte
+                                   </label>
+                                   <div className="relative">
+                                      <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+                                      <input
+                                        type="text"
+                                        value={cardNumber}
+                                        onChange={(e) => setCardNumber(e.target.value)}
+                                        placeholder="4444 4444 4444 4444"
+                                        className="w-full pl-11 pr-4 h-12 rounded-xl bg-white border border-zinc-200 text-sm font-medium text-zinc-900 focus:border-zinc-900 focus:ring-4 focus:ring-zinc-900/5 outline-none transition-all"
+                                      />
+                                   </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                   <div className="space-y-2">
+                                      <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest">
+                                         Expiration
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={cardExpiry}
+                                        onChange={(e) => setCardExpiry(e.target.value)}
+                                        placeholder="MM/YY"
+                                        className="w-full px-4 h-12 rounded-xl bg-white border border-zinc-200 text-sm font-medium text-zinc-900 focus:border-zinc-900 focus:ring-4 focus:ring-zinc-900/5 outline-none transition-all"
+                                      />
+                                   </div>
+                                   <div className="space-y-2">
+                                      <label className="block text-xs font-bold text-zinc-500 uppercase tracking-widest">
+                                         CVV
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={cardCvc}
+                                        onChange={(e) => setCardCvc(e.target.value)}
+                                        placeholder="123"
+                                        className="w-full px-4 h-12 rounded-xl bg-white border border-zinc-200 text-sm font-medium text-zinc-900 focus:border-zinc-900 focus:ring-4 focus:ring-zinc-900/5 outline-none transition-all"
+                                      />
+                                   </div>
+                                </div>
+                             </div>
+                           )}
+                        </div>
 
                         {error && <p className="text-sm font-medium text-orange-700">{error}</p>}
 
                         <button
                           type="submit"
                           disabled={isPaying}
-                          className="w-full inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-5 text-sm font-bold text-white shadow-lg shadow-emerald-600/20 transition hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-600/15 disabled:opacity-60 disabled:hover:bg-emerald-600"
+                          className="w-full inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-5 text-sm font-bold text-white shadow-lg shadow-zinc-900/20 transition hover:bg-zinc-800 focus:outline-none focus:ring-4 focus:ring-zinc-900/10 disabled:opacity-60 disabled:hover:bg-zinc-900"
                         >
                           <ShieldCheck className="h-4 w-4" aria-hidden="true" />
-                          {isPaying ? 'Paiement en cours...' : 'Payer maintenant'}
+                          {isPaying ? 'Transaction en cours...' : paymentMethod === 'mobile' ? 'Payer avec Mobile Money' : 'Payer avec Carte Bancaire'}
                         </button>
 
                         {paymentConfirmation && (

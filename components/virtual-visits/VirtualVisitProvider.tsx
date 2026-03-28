@@ -46,6 +46,7 @@ type VirtualVisitsContextValue = {
   recordVisitOpen: (accessId: string) => void;
   recordContactClick: (accessId: string) => void;
   getVisitStats: () => VirtualVisitStats;
+  removeAccess: (id: string) => void;
 };
 
 const STORAGE_KEY = 'immodesk.virtual-visits.v1';
@@ -202,6 +203,14 @@ export function VirtualVisitProvider({ children }: { children: ReactNode }) {
     };
   };
 
+  const removeAccess = (id: string) => {
+    setState((current) => ({
+      ...current,
+      accesses: current.accesses.filter((item) => item.id !== id),
+      logs: current.logs.filter((item) => item.accessId !== id),
+    }));
+  };
+
   const value: VirtualVisitsContextValue = {
     tours: state.tours,
     accesses: state.accesses,
@@ -212,6 +221,7 @@ export function VirtualVisitProvider({ children }: { children: ReactNode }) {
     recordVisitOpen,
     recordContactClick,
     getVisitStats,
+    removeAccess,
   };
 
   return <VirtualVisitsContext.Provider value={value}>{children}</VirtualVisitsContext.Provider>;

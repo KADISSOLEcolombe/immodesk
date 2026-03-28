@@ -2355,235 +2355,6 @@
       }
     },
     "/api/patrimoine/categories/": {
-      "get": {
-        "operationId": "patrimoine_categories_retrieve",
-        "description": "Retourne toutes les cat\u00e9gories de biens disponibles. Accessible \u00e0 tous les utilisateurs authentifi\u00e9s.",
-        "summary": "Lister toutes les cat\u00e9gories",
-        "tags": [
-          "Patrimoine \u2014 Cat\u00e9gories"
-        ],
-        "security": [
-          {
-            "jwtAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardCategorieSerializerResponse"
-                },
-                "examples": {
-                  "ListeDesCat\u00e9gories(sansPagination)": {
-                    "value": {
-                      "success": true,
-                      "code": "LIST_RETRIEVED",
-                      "message": "Liste r\u00e9cup\u00e9r\u00e9e avec succ\u00e8s.",
-                      "messageKey": "resource.list.retrieved",
-                      "data": [
-                        {
-                          "id": "uuid-1",
-                          "nom": "Appartement",
-                          "type_detail": "T3",
-                          "created_at": "2026-03-10T08:01:30.942886Z"
-                        },
-                        {
-                          "id": "uuid-2",
-                          "nom": "Studio",
-                          "type_detail": "",
-                          "created_at": "2026-03-10T08:01:30.942886Z"
-                        },
-                        {
-                          "id": "uuid-3",
-                          "nom": "Villa",
-                          "type_detail": "Duplex",
-                          "created_at": "2026-03-10T08:01:30.942886Z"
-                        },
-                        {
-                          "id": "uuid-4",
-                          "nom": "Bureau",
-                          "type_detail": "Open space",
-                          "created_at": "2026-03-10T08:01:30.942886Z"
-                        }
-                      ],
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": null,
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Liste des cat\u00e9gories (sans pagination)"
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CategorieList400"
-                },
-                "examples": {
-                  "\u00c9checDeLaCr\u00e9ationDeLaCat\u00e9gorie": {
-                    "value": {
-                      "success": false,
-                      "code": "RESOURCE_CREATION_FAILED",
-                      "message": "\u00c9chec de la cr\u00e9ation de la cat\u00e9gorie.",
-                      "messageKey": "resource.creation.failed",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "RESOURCE_CREATION_FAILED",
-                          "message": "\u00c9chec de la cr\u00e9ation de la cat\u00e9gorie.",
-                          "messageKey": "resource.creation.failed",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "\u00c9chec de la cr\u00e9ation de la cat\u00e9gorie"
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CategorieList401"
-                },
-                "examples": {
-                  "BearerTokenAbsent": {
-                    "value": {
-                      "success": false,
-                      "code": "AUTH_TOKEN_MISSING",
-                      "message": "Authentification requise.",
-                      "messageKey": "auth.token.missing",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "AUTH_TOKEN_MISSING",
-                          "message": "Authentication credentials were not provided.",
-                          "messageKey": "auth.token.missing",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Bearer token absent",
-                    "description": "Le header Authorization est absent."
-                  },
-                  "TokenInvalide": {
-                    "value": {
-                      "success": false,
-                      "code": "AUTH_TOKEN_INVALID",
-                      "message": "Token invalide.",
-                      "messageKey": "auth.token.invalid",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "AUTH_TOKEN_INVALID",
-                          "message": "Given token not valid for any token type.",
-                          "messageKey": "auth.token.invalid",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Token invalide",
-                    "description": "Le token soumis est invalide ou malform\u00e9."
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CategorieList404"
-                },
-                "examples": {
-                  "RessourceIntrouvable": {
-                    "value": {
-                      "success": false,
-                      "code": "RESOURCE_NOT_FOUND",
-                      "message": "Ressource introuvable.",
-                      "messageKey": "resource.not_found",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "RESOURCE_NOT_FOUND",
-                          "message": "Not found.",
-                          "messageKey": "resource.not_found",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Ressource introuvable"
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CategorieList500"
-                },
-                "examples": {
-                  "ErreurServeur": {
-                    "value": {
-                      "success": false,
-                      "code": "SYSTEM_INTERNAL_ERROR",
-                      "message": "Une erreur interne est survenue. Veuillez r\u00e9essayer.",
-                      "messageKey": "system.internal.error",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "SYSTEM_INTERNAL_ERROR",
-                          "message": "Une erreur interne est survenue.",
-                          "messageKey": "system.internal.error",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Erreur serveur"
-                  }
-                }
-              }
-            },
-            "description": ""
-          }
-        }
-      },
       "post": {
         "operationId": "patrimoine_categories_create",
         "description": "R\u00e9serv\u00e9 au Super Admin.",
@@ -2812,48 +2583,14 @@
             "description": ""
           }
         }
-      }
-    },
-    "/api/patrimoine/categories/{id}/": {
-      "put": {
-        "operationId": "patrimoine_categories_update",
-        "description": "R\u00e9serv\u00e9 au Super Admin.",
-        "summary": "Modifier une cat\u00e9gorie",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "description": "A UUID string identifying this categorie.",
-            "required": true
-          }
-        ],
+      },
+      "get": {
+        "operationId": "patrimoine_categories_retrieve",
+        "description": "Retourne toutes les cat\u00e9gories de biens disponibles. Accessible \u00e0 tous les utilisateurs authentifi\u00e9s.",
+        "summary": "Lister toutes les cat\u00e9gories",
         "tags": [
           "Patrimoine \u2014 Cat\u00e9gories"
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CategorieRequest"
-              }
-            },
-            "application/x-www-form-urlencoded": {
-              "schema": {
-                "$ref": "#/components/schemas/CategorieRequest"
-              }
-            },
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/CategorieRequest"
-              }
-            }
-          },
-          "required": true
-        },
         "security": [
           {
             "jwtAuth": []
@@ -2870,58 +2607,204 @@
                   "$ref": "#/components/schemas/StandardCategorieSerializerResponse"
                 },
                 "examples": {
-                  "Cat\u00e9gorieMise\u00c0Jour": {
+                  "ListeDesCat\u00e9gories(sansPagination)": {
                     "value": {
                       "success": true,
-                      "code": "RESOURCE_UPDATED",
-                      "message": "Cat\u00e9gorie mise \u00e0 jour avec succ\u00e8s.",
-                      "messageKey": "resource.updated.success",
-                      "data": {
-                        "id": "uuid-1",
-                        "nom": "Villa Duplex",
-                        "type_detail": "4P",
-                        "created_at": "2026-03-10T08:01:30.942886Z"
-                      },
+                      "code": "LIST_RETRIEVED",
+                      "message": "Liste r\u00e9cup\u00e9r\u00e9e avec succ\u00e8s.",
+                      "messageKey": "resource.list.retrieved",
+                      "data": [
+                        {
+                          "id": "uuid-1",
+                          "nom": "Appartement",
+                          "type_detail": "T3",
+                          "created_at": "2026-03-10T08:01:30.942886Z"
+                        },
+                        {
+                          "id": "uuid-2",
+                          "nom": "Studio",
+                          "type_detail": "",
+                          "created_at": "2026-03-10T08:01:30.942886Z"
+                        },
+                        {
+                          "id": "uuid-3",
+                          "nom": "Villa",
+                          "type_detail": "Duplex",
+                          "created_at": "2026-03-10T08:01:30.942886Z"
+                        },
+                        {
+                          "id": "uuid-4",
+                          "nom": "Bureau",
+                          "type_detail": "Open space",
+                          "created_at": "2026-03-10T08:01:30.942886Z"
+                        }
+                      ],
                       "timestamp": "2026-03-10T08:01:30.942886Z",
                       "errors": null,
                       "pagination": null,
                       "userContext": null
                     },
-                    "summary": "Cat\u00e9gorie mise \u00e0 jour"
+                    "summary": "Liste des cat\u00e9gories (sans pagination)"
                   }
                 }
               }
             },
             "description": ""
           },
-          "403": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CategorieUpdate403"
+                  "$ref": "#/components/schemas/CategorieList400"
                 },
                 "examples": {
-                  "Acc\u00e8sRefus\u00e9": {
+                  "\u00c9checDeLaCr\u00e9ationDeLaCat\u00e9gorie": {
                     "value": {
                       "success": false,
-                      "code": "PERMISSION_DENIED",
-                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
-                      "messageKey": "permission.denied",
+                      "code": "RESOURCE_CREATION_FAILED",
+                      "message": "\u00c9chec de la cr\u00e9ation de la cat\u00e9gorie.",
+                      "messageKey": "resource.creation.failed",
                       "data": null,
                       "timestamp": "2026-03-10T08:01:30.942886Z",
                       "errors": [
                         {
                           "field": null,
-                          "code": "PERMISSION_DENIED",
-                          "message": "You do not have permission to perform this action.",
-                          "messageKey": "permission.denied",
+                          "code": "RESOURCE_CREATION_FAILED",
+                          "message": "\u00c9chec de la cr\u00e9ation de la cat\u00e9gorie.",
+                          "messageKey": "resource.creation.failed",
                           "details": null
                         }
                       ],
                       "pagination": null,
                       "userContext": null
                     },
-                    "summary": "Acc\u00e8s refus\u00e9"
+                    "summary": "\u00c9chec de la cr\u00e9ation de la cat\u00e9gorie"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategorieList401"
+                },
+                "examples": {
+                  "BearerTokenAbsent": {
+                    "value": {
+                      "success": false,
+                      "code": "AUTH_TOKEN_MISSING",
+                      "message": "Authentification requise.",
+                      "messageKey": "auth.token.missing",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "AUTH_TOKEN_MISSING",
+                          "message": "Authentication credentials were not provided.",
+                          "messageKey": "auth.token.missing",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Bearer token absent",
+                    "description": "Le header Authorization est absent."
+                  },
+                  "TokenInvalide": {
+                    "value": {
+                      "success": false,
+                      "code": "AUTH_TOKEN_INVALID",
+                      "message": "Token invalide.",
+                      "messageKey": "auth.token.invalid",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "AUTH_TOKEN_INVALID",
+                          "message": "Given token not valid for any token type.",
+                          "messageKey": "auth.token.invalid",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Token invalide",
+                    "description": "Le token soumis est invalide ou malform\u00e9."
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategorieList404"
+                },
+                "examples": {
+                  "RessourceIntrouvable": {
+                    "value": {
+                      "success": false,
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "Ressource introuvable.",
+                      "messageKey": "resource.not_found",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "RESOURCE_NOT_FOUND",
+                          "message": "Not found.",
+                          "messageKey": "resource.not_found",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Ressource introuvable"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategorieList500"
+                },
+                "examples": {
+                  "ErreurServeur": {
+                    "value": {
+                      "success": false,
+                      "code": "SYSTEM_INTERNAL_ERROR",
+                      "message": "Une erreur interne est survenue. Veuillez r\u00e9essayer.",
+                      "messageKey": "system.internal.error",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "SYSTEM_INTERNAL_ERROR",
+                          "message": "Une erreur interne est survenue.",
+                          "messageKey": "system.internal.error",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Erreur serveur"
                   }
                 }
               }
@@ -2929,7 +2812,9 @@
             "description": ""
           }
         }
-      },
+      }
+    },
+    "/api/patrimoine/categories/{id}/": {
       "delete": {
         "operationId": "patrimoine_categories_destroy",
         "description": "R\u00e9serv\u00e9 au Super Admin. Bloqu\u00e9 si des biens utilisent cette cat\u00e9gorie.",
@@ -3023,6 +2908,121 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/CategorieDelete403"
+                },
+                "examples": {
+                  "Acc\u00e8sRefus\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "PERMISSION_DENIED",
+                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
+                      "messageKey": "permission.denied",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "PERMISSION_DENIED",
+                          "message": "You do not have permission to perform this action.",
+                          "messageKey": "permission.denied",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s refus\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
+      "put": {
+        "operationId": "patrimoine_categories_update",
+        "description": "R\u00e9serv\u00e9 au Super Admin.",
+        "summary": "Modifier une cat\u00e9gorie",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "A UUID string identifying this categorie.",
+            "required": true
+          }
+        ],
+        "tags": [
+          "Patrimoine \u2014 Cat\u00e9gories"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategorieRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/CategorieRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/CategorieRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardCategorieSerializerResponse"
+                },
+                "examples": {
+                  "Cat\u00e9gorieMise\u00c0Jour": {
+                    "value": {
+                      "success": true,
+                      "code": "RESOURCE_UPDATED",
+                      "message": "Cat\u00e9gorie mise \u00e0 jour avec succ\u00e8s.",
+                      "messageKey": "resource.updated.success",
+                      "data": {
+                        "id": "uuid-1",
+                        "nom": "Villa Duplex",
+                        "type_detail": "4P",
+                        "created_at": "2026-03-10T08:01:30.942886Z"
+                      },
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Cat\u00e9gorie mise \u00e0 jour"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategorieUpdate403"
                 },
                 "examples": {
                   "Acc\u00e8sRefus\u00e9": {
@@ -3151,185 +3151,6 @@
       }
     },
     "/api/patrimoine/immeubles/": {
-      "get": {
-        "operationId": "patrimoine_immeubles_retrieve",
-        "description": "Le propri\u00e9taire voit ses immeubles uniquement. L'admin voit tout.",
-        "summary": "Lister ses immeubles",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "page",
-            "schema": {
-              "type": "integer"
-            },
-            "description": "Num\u00e9ro de la page (d\u00e9faut: 1)"
-          },
-          {
-            "in": "query",
-            "name": "page_size",
-            "schema": {
-              "type": "integer"
-            },
-            "description": "Nombre d'\u00e9l\u00e9ments par page (d\u00e9faut: 20, max: 100)"
-          }
-        ],
-        "tags": [
-          "Patrimoine \u2014 Immeubles"
-        ],
-        "security": [
-          {
-            "jwtAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardImmeubleSerializerResponse"
-                },
-                "examples": {
-                  "ListeDesImmeubles": {
-                    "value": {
-                      "success": true,
-                      "code": "LIST_RETRIEVED",
-                      "message": "Liste r\u00e9cup\u00e9r\u00e9e avec succ\u00e8s.",
-                      "messageKey": "resource.list.retrieved",
-                      "data": [
-                        {
-                          "id": "uuid-1",
-                          "nom": "R\u00e9sidence Les Flamboyants",
-                          "adresse": "12 rue F\u00e9lix Faure, Abidjan",
-                          "proprietaire": "uuid-proprio",
-                          "proprietaire_email": "proprio@example.com",
-                          "nombre_biens": 4,
-                          "created_at": "2026-03-10T08:01:30.942886Z",
-                          "type_logement": "t3",
-                          "categorie_logement": "familial",
-                          "nb_pieces": 3,
-                          "surface_m2": "85.50",
-                          "standing": "confort",
-                          "etage": "2e",
-                          "amenagement": "meuble",
-                          "espaces_exterieurs": [
-                            "balcon"
-                          ],
-                          "usage_special": "",
-                          "accessibilite": [
-                            "ascenseur",
-                            "parking"
-                          ]
-                        },
-                        {
-                          "id": "uuid-2",
-                          "nom": "R\u00e9sidence Le Palmier",
-                          "description": "Petit immeuble tranquille",
-                          "adresse": "45 Boulevard de la R\u00e9publique, Abidjan",
-                          "latitude": 5.34,
-                          "longitude": -4.01,
-                          "lien_maps": "",
-                          "proprietaire": "uuid-proprio",
-                          "proprietaire_email": "proprio@example.com",
-                          "nombre_biens": 2,
-                          "created_at": "2026-03-10T08:01:30.942886Z",
-                          "type_logement": "t2",
-                          "categorie_logement": "etudiant",
-                          "nb_pieces": 2,
-                          "surface_m2": "45.00",
-                          "standing": "standard",
-                          "etage": "1er",
-                          "amenagement": "non_meuble",
-                          "espaces_exterieurs": [],
-                          "usage_special": "R\u00e9sidence \u00e9tudiante",
-                          "accessibilite": [
-                            "parking"
-                          ]
-                        }
-                      ],
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": null,
-                      "pagination": {
-                        "current_page": 1,
-                        "total_pages": 5,
-                        "page_size": 20,
-                        "total_count": 95,
-                        "next_page": 2,
-                        "previous_page": null,
-                        "has_next": true,
-                        "has_previous": false
-                      },
-                      "userContext": null
-                    },
-                    "summary": "Liste des immeubles"
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ImmeubleList401"
-                },
-                "examples": {
-                  "BearerTokenAbsent": {
-                    "value": {
-                      "success": false,
-                      "code": "AUTH_TOKEN_MISSING",
-                      "message": "Authentification requise.",
-                      "messageKey": "auth.token.missing",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "AUTH_TOKEN_MISSING",
-                          "message": "Authentication credentials were not provided.",
-                          "messageKey": "auth.token.missing",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Bearer token absent",
-                    "description": "Le header Authorization est absent."
-                  },
-                  "TokenInvalide": {
-                    "value": {
-                      "success": false,
-                      "code": "AUTH_TOKEN_INVALID",
-                      "message": "Token invalide.",
-                      "messageKey": "auth.token.invalid",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "AUTH_TOKEN_INVALID",
-                          "message": "Given token not valid for any token type.",
-                          "messageKey": "auth.token.invalid",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Token invalide",
-                    "description": "Le token soumis est invalide ou malform\u00e9."
-                  }
-                }
-              }
-            },
-            "description": ""
-          }
-        }
-      },
       "post": {
         "operationId": "patrimoine_immeubles_create",
         "description": "R\u00e9serv\u00e9 au Super Admin.",
@@ -3541,9 +3362,260 @@
             "description": ""
           }
         }
+      },
+      "get": {
+        "operationId": "patrimoine_immeubles_retrieve",
+        "description": "Le propri\u00e9taire voit ses immeubles uniquement. L'admin voit tout.",
+        "summary": "Lister ses immeubles",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Num\u00e9ro de la page (d\u00e9faut: 1)"
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Nombre d'\u00e9l\u00e9ments par page (d\u00e9faut: 20, max: 100)"
+          }
+        ],
+        "tags": [
+          "Patrimoine \u2014 Immeubles"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardImmeubleSerializerResponse"
+                },
+                "examples": {
+                  "ListeDesImmeubles": {
+                    "value": {
+                      "success": true,
+                      "code": "LIST_RETRIEVED",
+                      "message": "Liste r\u00e9cup\u00e9r\u00e9e avec succ\u00e8s.",
+                      "messageKey": "resource.list.retrieved",
+                      "data": [
+                        {
+                          "id": "uuid-1",
+                          "nom": "R\u00e9sidence Les Flamboyants",
+                          "adresse": "12 rue F\u00e9lix Faure, Abidjan",
+                          "proprietaire": "uuid-proprio",
+                          "proprietaire_email": "proprio@example.com",
+                          "nombre_biens": 4,
+                          "created_at": "2026-03-10T08:01:30.942886Z",
+                          "type_logement": "t3",
+                          "categorie_logement": "familial",
+                          "nb_pieces": 3,
+                          "surface_m2": "85.50",
+                          "standing": "confort",
+                          "etage": "2e",
+                          "amenagement": "meuble",
+                          "espaces_exterieurs": [
+                            "balcon"
+                          ],
+                          "usage_special": "",
+                          "accessibilite": [
+                            "ascenseur",
+                            "parking"
+                          ]
+                        },
+                        {
+                          "id": "uuid-2",
+                          "nom": "R\u00e9sidence Le Palmier",
+                          "description": "Petit immeuble tranquille",
+                          "adresse": "45 Boulevard de la R\u00e9publique, Abidjan",
+                          "latitude": 5.34,
+                          "longitude": -4.01,
+                          "lien_maps": "",
+                          "proprietaire": "uuid-proprio",
+                          "proprietaire_email": "proprio@example.com",
+                          "nombre_biens": 2,
+                          "created_at": "2026-03-10T08:01:30.942886Z",
+                          "type_logement": "t2",
+                          "categorie_logement": "etudiant",
+                          "nb_pieces": 2,
+                          "surface_m2": "45.00",
+                          "standing": "standard",
+                          "etage": "1er",
+                          "amenagement": "non_meuble",
+                          "espaces_exterieurs": [],
+                          "usage_special": "R\u00e9sidence \u00e9tudiante",
+                          "accessibilite": [
+                            "parking"
+                          ]
+                        }
+                      ],
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": null,
+                      "pagination": {
+                        "current_page": 1,
+                        "total_pages": 5,
+                        "page_size": 20,
+                        "total_count": 95,
+                        "next_page": 2,
+                        "previous_page": null,
+                        "has_next": true,
+                        "has_previous": false
+                      },
+                      "userContext": null
+                    },
+                    "summary": "Liste des immeubles"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImmeubleList401"
+                },
+                "examples": {
+                  "BearerTokenAbsent": {
+                    "value": {
+                      "success": false,
+                      "code": "AUTH_TOKEN_MISSING",
+                      "message": "Authentification requise.",
+                      "messageKey": "auth.token.missing",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "AUTH_TOKEN_MISSING",
+                          "message": "Authentication credentials were not provided.",
+                          "messageKey": "auth.token.missing",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Bearer token absent",
+                    "description": "Le header Authorization est absent."
+                  },
+                  "TokenInvalide": {
+                    "value": {
+                      "success": false,
+                      "code": "AUTH_TOKEN_INVALID",
+                      "message": "Token invalide.",
+                      "messageKey": "auth.token.invalid",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "AUTH_TOKEN_INVALID",
+                          "message": "Given token not valid for any token type.",
+                          "messageKey": "auth.token.invalid",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Token invalide",
+                    "description": "Le token soumis est invalide ou malform\u00e9."
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
       }
     },
     "/api/patrimoine/immeubles/{id}/": {
+      "delete": {
+        "operationId": "patrimoine_immeubles_destroy",
+        "description": "R\u00e9serv\u00e9 au Super Admin. Bloqu\u00e9 si l'immeuble contient des biens actifs.",
+        "summary": "Supprimer un immeuble (soft delete)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "tags": [
+          "Patrimoine \u2014 Immeubles"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImmeubleDelete204"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImmeubleDelete400"
+                },
+                "examples": {
+                  "ImmeubleContientDesBiensActifs": {
+                    "value": {
+                      "success": false,
+                      "code": "BUSINESS_BIEN_HAS_ACTIVE_BIENS",
+                      "message": "Impossible de supprimer : cet immeuble contient des biens actifs.",
+                      "messageKey": "business.bien.has_active_biens",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "BUSINESS_BIEN_HAS_ACTIVE_BIENS",
+                          "message": "Supprimez ou d\u00e9liez les biens d'abord.",
+                          "messageKey": "business.bien.has_active_biens",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Immeuble contient des biens actifs"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
       "put": {
         "operationId": "patrimoine_immeubles_update",
         "description": "R\u00e9serv\u00e9 au Super Admin.",
@@ -3783,78 +3855,6 @@
             "description": ""
           }
         }
-      },
-      "delete": {
-        "operationId": "patrimoine_immeubles_destroy",
-        "description": "R\u00e9serv\u00e9 au Super Admin. Bloqu\u00e9 si l'immeuble contient des biens actifs.",
-        "summary": "Supprimer un immeuble (soft delete)",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "schema": {
-              "type": "string"
-            },
-            "required": true
-          }
-        ],
-        "tags": [
-          "Patrimoine \u2014 Immeubles"
-        ],
-        "security": [
-          {
-            "jwtAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "204": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ImmeubleDelete204"
-                }
-              }
-            },
-            "description": ""
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ImmeubleDelete400"
-                },
-                "examples": {
-                  "ImmeubleContientDesBiensActifs": {
-                    "value": {
-                      "success": false,
-                      "code": "BUSINESS_BIEN_HAS_ACTIVE_BIENS",
-                      "message": "Impossible de supprimer : cet immeuble contient des biens actifs.",
-                      "messageKey": "business.bien.has_active_biens",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "BUSINESS_BIEN_HAS_ACTIVE_BIENS",
-                          "message": "Supprimez ou d\u00e9liez les biens d'abord.",
-                          "messageKey": "business.bien.has_active_biens",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Immeuble contient des biens actifs"
-                  }
-                }
-              }
-            },
-            "description": ""
-          }
-        }
       }
     },
     "/api/patrimoine/immeubles/{id}/biens/": {
@@ -3960,6 +3960,108 @@
       }
     },
     "/api/patrimoine/biens/": {
+      "post": {
+        "operationId": "patrimoine_biens_create",
+        "description": "R\u00e9serv\u00e9 au Super Admin. Pour soumettre un bien via le workflow, utiliser `/api/patrimoine/soumissions/`.",
+        "summary": "Cr\u00e9er un bien directement",
+        "tags": [
+          "Patrimoine \u2014 Biens"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BienCreateUpdateRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/BienCreateUpdateRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/BienCreateUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardBienDetailSerializerResponse"
+                },
+                "examples": {
+                  "BienCr\u00e9\u00e9": {
+                    "value": {
+                      "success": true,
+                      "code": "RESOURCE_CREATED",
+                      "message": "Bien cr\u00e9\u00e9 avec succ\u00e8s.",
+                      "messageKey": "resource.created.success",
+                      "data": {
+                        "id": "uuid-bien-1",
+                        "adresse": "12 rue F\u00e9lix Faure",
+                        "statut": "vacant"
+                      },
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Bien cr\u00e9\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BienCreate403"
+                },
+                "examples": {
+                  "Acc\u00e8sRefus\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "PERMISSION_DENIED",
+                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
+                      "messageKey": "permission.denied",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "PERMISSION_DENIED",
+                          "message": "You do not have permission to perform this action.",
+                          "messageKey": "permission.denied",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s refus\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
       "get": {
         "operationId": "patrimoine_biens_retrieve",
         "description": "Le propri\u00e9taire voit ses biens uniquement. L'admin voit tout.",
@@ -4227,108 +4329,6 @@
             "description": ""
           }
         }
-      },
-      "post": {
-        "operationId": "patrimoine_biens_create",
-        "description": "R\u00e9serv\u00e9 au Super Admin. Pour soumettre un bien via le workflow, utiliser `/api/patrimoine/soumissions/`.",
-        "summary": "Cr\u00e9er un bien directement",
-        "tags": [
-          "Patrimoine \u2014 Biens"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BienCreateUpdateRequest"
-              }
-            },
-            "application/x-www-form-urlencoded": {
-              "schema": {
-                "$ref": "#/components/schemas/BienCreateUpdateRequest"
-              }
-            },
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/BienCreateUpdateRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "security": [
-          {
-            "jwtAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardBienDetailSerializerResponse"
-                },
-                "examples": {
-                  "BienCr\u00e9\u00e9": {
-                    "value": {
-                      "success": true,
-                      "code": "RESOURCE_CREATED",
-                      "message": "Bien cr\u00e9\u00e9 avec succ\u00e8s.",
-                      "messageKey": "resource.created.success",
-                      "data": {
-                        "id": "uuid-bien-1",
-                        "adresse": "12 rue F\u00e9lix Faure",
-                        "statut": "vacant"
-                      },
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": null,
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Bien cr\u00e9\u00e9"
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BienCreate403"
-                },
-                "examples": {
-                  "Acc\u00e8sRefus\u00e9": {
-                    "value": {
-                      "success": false,
-                      "code": "PERMISSION_DENIED",
-                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
-                      "messageKey": "permission.denied",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "PERMISSION_DENIED",
-                          "message": "You do not have permission to perform this action.",
-                          "messageKey": "permission.denied",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Acc\u00e8s refus\u00e9"
-                  }
-                }
-              }
-            },
-            "description": ""
-          }
-        }
       }
     },
     "/api/patrimoine/biens/public/": {
@@ -4430,6 +4430,80 @@
       }
     },
     "/api/patrimoine/biens/{id}/": {
+      "delete": {
+        "operationId": "patrimoine_biens_destroy",
+        "description": "R\u00e9serv\u00e9 au Super Admin. Bloqu\u00e9 si un bail actif est li\u00e9 au bien.",
+        "summary": "Supprimer un bien (soft delete)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "A UUID string identifying this bien.",
+            "required": true
+          }
+        ],
+        "tags": [
+          "Patrimoine \u2014 Biens"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "204": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BienDelete204"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BienDelete400"
+                },
+                "examples": {
+                  "BailActifLi\u00e9AuBien": {
+                    "value": {
+                      "success": false,
+                      "code": "BUSINESS_BIEN_HAS_BAIL_ACTIF",
+                      "message": "Impossible de supprimer : un bail actif est li\u00e9 \u00e0 ce bien.",
+                      "messageKey": "business.bien.has_bail_actif",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "BUSINESS_BIEN_HAS_BAIL_ACTIF",
+                          "message": "Terminez le bail actif avant de supprimer le bien.",
+                          "messageKey": "business.bien.has_bail_actif",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Bail actif li\u00e9 au bien"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
       "put": {
         "operationId": "patrimoine_biens_update",
         "description": "R\u00e9serv\u00e9 au Super Admin.",
@@ -4654,158 +4728,9 @@
             "description": ""
           }
         }
-      },
-      "delete": {
-        "operationId": "patrimoine_biens_destroy",
-        "description": "R\u00e9serv\u00e9 au Super Admin. Bloqu\u00e9 si un bail actif est li\u00e9 au bien.",
-        "summary": "Supprimer un bien (soft delete)",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "description": "A UUID string identifying this bien.",
-            "required": true
-          }
-        ],
-        "tags": [
-          "Patrimoine \u2014 Biens"
-        ],
-        "security": [
-          {
-            "jwtAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "204": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BienDelete204"
-                }
-              }
-            },
-            "description": ""
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BienDelete400"
-                },
-                "examples": {
-                  "BailActifLi\u00e9AuBien": {
-                    "value": {
-                      "success": false,
-                      "code": "BUSINESS_BIEN_HAS_BAIL_ACTIF",
-                      "message": "Impossible de supprimer : un bail actif est li\u00e9 \u00e0 ce bien.",
-                      "messageKey": "business.bien.has_bail_actif",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "BUSINESS_BIEN_HAS_BAIL_ACTIF",
-                          "message": "Terminez le bail actif avant de supprimer le bien.",
-                          "messageKey": "business.bien.has_bail_actif",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Bail actif li\u00e9 au bien"
-                  }
-                }
-              }
-            },
-            "description": ""
-          }
-        }
       }
     },
     "/api/patrimoine/biens/{id}/photos/": {
-      "get": {
-        "operationId": "patrimoine_biens_photos_retrieve",
-        "description": "GET /api/patrimoine/biens/{id}/photos/\nAccessible au locataire pour le bien dans lequel il vit.\nL'acc\u00e8s est filtr\u00e9 par get_queryset() \u2014 il ne voit que son bien.",
-        "summary": "Lister les photos d'un bien.\n\n**Pas de pagination** car liste limit\u00e9e par bien.",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "description": "A UUID string identifying this bien.",
-            "required": true
-          }
-        ],
-        "tags": [
-          "Patrimoine \u2014 Biens"
-        ],
-        "security": [
-          {
-            "jwtAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardPhotoBienSerializerResponse"
-                },
-                "examples": {
-                  "ListeDesPhotos(sansPagination)": {
-                    "value": {
-                      "success": true,
-                      "code": "LIST_RETRIEVED",
-                      "message": "Photos r\u00e9cup\u00e9r\u00e9es avec succ\u00e8s.",
-                      "messageKey": "resource.list.retrieved",
-                      "data": [
-                        {
-                          "id": "uuid-photo-1",
-                          "fichier": "http://example.com/media/biens/photos/2026/03/salon.jpg",
-                          "ordre": 0,
-                          "created_at": "2026-03-10T08:01:30.942886Z"
-                        },
-                        {
-                          "id": "uuid-photo-2",
-                          "fichier": "http://example.com/media/biens/photos/2026/03/chambre.jpg",
-                          "ordre": 1,
-                          "created_at": "2026-03-10T08:01:30.942886Z"
-                        },
-                        {
-                          "id": "uuid-photo-3",
-                          "fichier": "http://example.com/media/biens/photos/2026/03/cuisine.jpg",
-                          "ordre": 2,
-                          "created_at": "2026-03-10T08:01:30.942886Z"
-                        }
-                      ],
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": null,
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Liste des photos (sans pagination)"
-                  }
-                }
-              }
-            },
-            "description": ""
-          }
-        }
-      },
       "post": {
         "operationId": "patrimoine_biens_photos_create",
         "description": "Upload multiple en **multipart/form-data**.\n\nDans Yaak : body \u2192 **Multi-Part** \u2192 champ `fichiers` \u2192 type **File**.",
@@ -5016,6 +4941,81 @@
             "description": ""
           }
         }
+      },
+      "get": {
+        "operationId": "patrimoine_biens_photos_retrieve",
+        "description": "GET /api/patrimoine/biens/{id}/photos/\nAccessible au locataire pour le bien dans lequel il vit.\nL'acc\u00e8s est filtr\u00e9 par get_queryset() \u2014 il ne voit que son bien.",
+        "summary": "Lister les photos d'un bien.\n\n**Pas de pagination** car liste limit\u00e9e par bien.",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "A UUID string identifying this bien.",
+            "required": true
+          }
+        ],
+        "tags": [
+          "Patrimoine \u2014 Biens"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardPhotoBienSerializerResponse"
+                },
+                "examples": {
+                  "ListeDesPhotos(sansPagination)": {
+                    "value": {
+                      "success": true,
+                      "code": "LIST_RETRIEVED",
+                      "message": "Photos r\u00e9cup\u00e9r\u00e9es avec succ\u00e8s.",
+                      "messageKey": "resource.list.retrieved",
+                      "data": [
+                        {
+                          "id": "uuid-photo-1",
+                          "fichier": "http://example.com/media/biens/photos/2026/03/salon.jpg",
+                          "ordre": 0,
+                          "created_at": "2026-03-10T08:01:30.942886Z"
+                        },
+                        {
+                          "id": "uuid-photo-2",
+                          "fichier": "http://example.com/media/biens/photos/2026/03/chambre.jpg",
+                          "ordre": 1,
+                          "created_at": "2026-03-10T08:01:30.942886Z"
+                        },
+                        {
+                          "id": "uuid-photo-3",
+                          "fichier": "http://example.com/media/biens/photos/2026/03/cuisine.jpg",
+                          "ordre": 2,
+                          "created_at": "2026-03-10T08:01:30.942886Z"
+                        }
+                      ],
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Liste des photos (sans pagination)"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
       }
     },
     "/api/patrimoine/biens/{id}/statut/": {
@@ -5132,39 +5132,96 @@
         }
       }
     },
-    "/api/patrimoine/soumissions/": {
-      "get": {
-        "operationId": "patrimoine_soumissions_retrieve",
-        "description": "Le propri\u00e9taire voit ses soumissions uniquement.\n\nL'admin voit toutes les soumissions. Filtres disponibles",
-        "summary": "Lister les soumissions",
+    "/api/patrimoine/biens/{id}/photos/reorder/": {
+      "post": {
+        "operationId": "patrimoine_biens_photos_reorder_create",
+        "description": "POST /api/patrimoine/biens/{id}/photos/reorder/",
+        "summary": "R\u00e9ordonner les photos d'un bien",
         "parameters": [
           {
-            "in": "query",
-            "name": "page",
+            "in": "path",
+            "name": "id",
             "schema": {
-              "type": "integer"
+              "type": "string",
+              "format": "uuid"
             },
-            "description": "Num\u00e9ro de la page (d\u00e9faut: 1)"
-          },
-          {
-            "in": "query",
-            "name": "page_size",
-            "schema": {
-              "type": "integer"
-            },
-            "description": "Nombre d'\u00e9l\u00e9ments par page (d\u00e9faut: 20, max: 100)"
-          },
-          {
-            "in": "query",
-            "name": "statut",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Le propri\u00e9taire voit ses soumissions uniquement.\n\nL'admin voit toutes les soumissions.\n\n**Pagination active** : 20 \u00e9l\u00e9ments par page par d\u00e9faut.\n\n**Filtres disponibles** :\n- `?statut=en_examen|publie|refuse` : Filtrer par statut\n\n**Param\u00e8tres de pagination** :\n- `?page=2` : Num\u00e9ro de page\n- `?page_size=50` : Nombre d'\u00e9l\u00e9ments par page (max 100)"
+            "description": "A UUID string identifying this bien.",
+            "required": true
           }
         ],
         "tags": [
-          "Patrimoine \u2014 Soumissions"
+          "Patrimoine \u2014 Biens"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ordered_ids": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                },
+                "required": [
+                  "ordered_ids"
+                ]
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardPhotoBienSerializerResponse"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/patrimoine/biens/{id}/photos/{id_photo}/": {
+      "delete": {
+        "operationId": "patrimoine_biens_photos_destroy",
+        "description": "DELETE /api/patrimoine/biens/{id}/photos/{id_photo}/",
+        "summary": "Supprimer une photo d'un bien",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "A UUID string identifying this bien.",
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "id_photo",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "tags": [
+          "Patrimoine \u2014 Biens"
         ],
         "security": [
           {
@@ -5179,7 +5236,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/StandardSoumissionBienSerializerResponse"
+                  "$ref": "#/components/schemas/PhotoDelete200"
                 }
               }
             },
@@ -5189,38 +5246,16 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ListeSoumissions404"
-                },
-                "examples": {
-                  "RessourceIntrouvable": {
-                    "value": {
-                      "success": false,
-                      "code": "RESOURCE_NOT_FOUND",
-                      "message": "Ressource introuvable.",
-                      "messageKey": "resource.not_found",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "RESOURCE_NOT_FOUND",
-                          "message": "Not found.",
-                          "messageKey": "resource.not_found",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Ressource introuvable"
-                  }
+                  "$ref": "#/components/schemas/PhotoDelete404"
                 }
               }
             },
             "description": ""
           }
         }
-      },
+      }
+    },
+    "/api/patrimoine/soumissions/": {
       "post": {
         "operationId": "patrimoine_soumissions_create",
         "description": "R\u00e9serv\u00e9 au **propri\u00e9taire**. Cr\u00e9e une soumission avec statut `en_examen`. L'admin devra ensuite la valider ou la refuser.",
@@ -5436,6 +5471,94 @@
                       "userContext": null
                     },
                     "summary": "Acc\u00e8s refus\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
+      "get": {
+        "operationId": "patrimoine_soumissions_retrieve",
+        "description": "Le propri\u00e9taire voit ses soumissions uniquement.\n\nL'admin voit toutes les soumissions. Filtres disponibles",
+        "summary": "Lister les soumissions",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Num\u00e9ro de la page (d\u00e9faut: 1)"
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Nombre d'\u00e9l\u00e9ments par page (d\u00e9faut: 20, max: 100)"
+          },
+          {
+            "in": "query",
+            "name": "statut",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Le propri\u00e9taire voit ses soumissions uniquement.\n\nL'admin voit toutes les soumissions.\n\n**Pagination active** : 20 \u00e9l\u00e9ments par page par d\u00e9faut.\n\n**Filtres disponibles** :\n- `?statut=en_examen|publie|refuse` : Filtrer par statut\n\n**Param\u00e8tres de pagination** :\n- `?page=2` : Num\u00e9ro de page\n- `?page_size=50` : Nombre d'\u00e9l\u00e9ments par page (max 100)"
+          }
+        ],
+        "tags": [
+          "Patrimoine \u2014 Soumissions"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardSoumissionBienSerializerResponse"
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListeSoumissions404"
+                },
+                "examples": {
+                  "RessourceIntrouvable": {
+                    "value": {
+                      "success": false,
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "Ressource introuvable.",
+                      "messageKey": "resource.not_found",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "RESOURCE_NOT_FOUND",
+                          "message": "Not found.",
+                          "messageKey": "resource.not_found",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Ressource introuvable"
                   }
                 }
               }
@@ -6219,179 +6342,6 @@
       }
     },
     "/api/locations/locataires/": {
-      "get": {
-        "operationId": "locations_locataires_retrieve",
-        "description": "Le propri\u00e9taire voit ses locataires uniquement. L'admin voit tous les dossiers.",
-        "summary": "Lister les locataires",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "page",
-            "schema": {
-              "type": "integer"
-            },
-            "description": "Num\u00e9ro de page"
-          },
-          {
-            "in": "query",
-            "name": "page_size",
-            "schema": {
-              "type": "integer"
-            },
-            "description": "\u00c9l\u00e9ments par page"
-          }
-        ],
-        "tags": [
-          "Locations \u2014 Locataires"
-        ],
-        "security": [
-          {
-            "jwtAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardLocataireListSerializerResponse"
-                },
-                "examples": {
-                  "ListeDesLocataires": {
-                    "value": {
-                      "success": true,
-                      "code": "LIST_RETRIEVED",
-                      "message": "Locataires r\u00e9cup\u00e9r\u00e9s avec succ\u00e8s.",
-                      "messageKey": "resource.list.retrieved",
-                      "data": [
-                        {
-                          "id": "uuid-loc-1",
-                          "user": "uuid-user-1",
-                          "user_email": "locataire@example.com",
-                          "user_full_name": "Jean Dupont",
-                          "proprietaire": "uuid-proprio",
-                          "profession": "Ing\u00e9nieur",
-                          "created_at": "2026-03-10T08:01:30.942886Z"
-                        }
-                      ],
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": null,
-                      "pagination": {
-                        "current_page": 1,
-                        "total_pages": 3,
-                        "total_count": 42,
-                        "page_size": 20,
-                        "next_page": 2,
-                        "previous_page": null,
-                        "has_next": true,
-                        "has_previous": false
-                      },
-                      "userContext": null
-                    },
-                    "summary": "Liste des locataires"
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LocataireList401"
-                },
-                "examples": {
-                  "BearerTokenAbsent": {
-                    "value": {
-                      "success": false,
-                      "code": "AUTH_TOKEN_MISSING",
-                      "message": "Authentification requise.",
-                      "messageKey": "auth.token.missing",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "AUTH_TOKEN_MISSING",
-                          "message": "Authentication credentials were not provided.",
-                          "messageKey": "auth.token.missing",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Bearer token absent",
-                    "description": "Le header Authorization est absent."
-                  },
-                  "TokenInvalide": {
-                    "value": {
-                      "success": false,
-                      "code": "AUTH_TOKEN_INVALID",
-                      "message": "Token invalide.",
-                      "messageKey": "auth.token.invalid",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "AUTH_TOKEN_INVALID",
-                          "message": "Given token not valid for any token type.",
-                          "messageKey": "auth.token.invalid",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Token invalide",
-                    "description": "Le token soumis est invalide ou malform\u00e9."
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LocataireList500"
-                },
-                "examples": {
-                  "ErreurServeur": {
-                    "value": {
-                      "success": false,
-                      "code": "SYSTEM_INTERNAL_ERROR",
-                      "message": "Une erreur interne est survenue. Veuillez r\u00e9essayer.",
-                      "messageKey": "system.internal.error",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "SYSTEM_INTERNAL_ERROR",
-                          "message": "Une erreur interne est survenue.",
-                          "messageKey": "system.internal.error",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Erreur serveur"
-                  }
-                }
-              }
-            },
-            "description": ""
-          }
-        }
-      },
       "post": {
         "operationId": "locations_locataires_create",
         "description": "R\u00e9serv\u00e9 au Super Admin. Lie un compte `User` (role=locataire) \u00e0 un propri\u00e9taire et cr\u00e9e son dossier.",
@@ -6569,9 +6519,307 @@
             "description": ""
           }
         }
+      },
+      "get": {
+        "operationId": "locations_locataires_retrieve",
+        "description": "Le propri\u00e9taire voit ses locataires uniquement. L'admin voit tous les dossiers.",
+        "summary": "Lister les locataires",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Num\u00e9ro de page"
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "\u00c9l\u00e9ments par page"
+          }
+        ],
+        "tags": [
+          "Locations \u2014 Locataires"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardLocataireListSerializerResponse"
+                },
+                "examples": {
+                  "ListeDesLocataires": {
+                    "value": {
+                      "success": true,
+                      "code": "LIST_RETRIEVED",
+                      "message": "Locataires r\u00e9cup\u00e9r\u00e9s avec succ\u00e8s.",
+                      "messageKey": "resource.list.retrieved",
+                      "data": [
+                        {
+                          "id": "uuid-loc-1",
+                          "user": "uuid-user-1",
+                          "user_email": "locataire@example.com",
+                          "user_full_name": "Jean Dupont",
+                          "proprietaire": "uuid-proprio",
+                          "profession": "Ing\u00e9nieur",
+                          "created_at": "2026-03-10T08:01:30.942886Z"
+                        }
+                      ],
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": null,
+                      "pagination": {
+                        "current_page": 1,
+                        "total_pages": 3,
+                        "total_count": 42,
+                        "page_size": 20,
+                        "next_page": 2,
+                        "previous_page": null,
+                        "has_next": true,
+                        "has_previous": false
+                      },
+                      "userContext": null
+                    },
+                    "summary": "Liste des locataires"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocataireList401"
+                },
+                "examples": {
+                  "BearerTokenAbsent": {
+                    "value": {
+                      "success": false,
+                      "code": "AUTH_TOKEN_MISSING",
+                      "message": "Authentification requise.",
+                      "messageKey": "auth.token.missing",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "AUTH_TOKEN_MISSING",
+                          "message": "Authentication credentials were not provided.",
+                          "messageKey": "auth.token.missing",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Bearer token absent",
+                    "description": "Le header Authorization est absent."
+                  },
+                  "TokenInvalide": {
+                    "value": {
+                      "success": false,
+                      "code": "AUTH_TOKEN_INVALID",
+                      "message": "Token invalide.",
+                      "messageKey": "auth.token.invalid",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "AUTH_TOKEN_INVALID",
+                          "message": "Given token not valid for any token type.",
+                          "messageKey": "auth.token.invalid",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Token invalide",
+                    "description": "Le token soumis est invalide ou malform\u00e9."
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocataireList500"
+                },
+                "examples": {
+                  "ErreurServeur": {
+                    "value": {
+                      "success": false,
+                      "code": "SYSTEM_INTERNAL_ERROR",
+                      "message": "Une erreur interne est survenue. Veuillez r\u00e9essayer.",
+                      "messageKey": "system.internal.error",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "SYSTEM_INTERNAL_ERROR",
+                          "message": "Une erreur interne est survenue.",
+                          "messageKey": "system.internal.error",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Erreur serveur"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
       }
     },
     "/api/locations/locataires/{id}/": {
+      "delete": {
+        "operationId": "locations_locataires_destroy",
+        "description": "R\u00e9serv\u00e9 au Super Admin. **Bloqu\u00e9** si le locataire a un bail actif en cours.",
+        "summary": "D\u00e9sactiver un dossier locataire (soft delete)",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "tags": [
+          "Locations \u2014 Locataires"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardDeletedLocataireSerializerResponse"
+                },
+                "examples": {
+                  "DossierLocataireD\u00e9sactiv\u00e9": {
+                    "value": {
+                      "success": true,
+                      "code": "RESOURCE_DELETED",
+                      "message": "Dossier locataire d\u00e9sactiv\u00e9 avec succ\u00e8s.",
+                      "messageKey": "resource.deleted.success",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Dossier locataire d\u00e9sactiv\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocataireDestroy400"
+                },
+                "examples": {
+                  "BailActif\u2014D\u00e9sactivationImpossible": {
+                    "value": {
+                      "success": false,
+                      "code": "BUSINESS_LOCATAIRE_HAS_BAIL_ACTIF",
+                      "message": "Impossible de d\u00e9sactiver : ce locataire a un bail actif en cours.",
+                      "messageKey": "business.locataire.has_bail_actif",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "BUSINESS_LOCATAIRE_HAS_BAIL_ACTIF",
+                          "message": "Cl\u00f4turez d'abord le bail avant de d\u00e9sactiver le dossier.",
+                          "messageKey": "business.locataire.has_bail_actif",
+                          "details": {
+                            "locataire_id": "uuid-loc-1",
+                            "bail_actif_id": "uuid-bail-1"
+                          }
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Bail actif \u2014 d\u00e9sactivation impossible"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocataireDestroy403"
+                },
+                "examples": {
+                  "Acc\u00e8sRefus\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "PERMISSION_DENIED",
+                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
+                      "messageKey": "permission.denied",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "PERMISSION_DENIED",
+                          "message": "You do not have permission to perform this action.",
+                          "messageKey": "permission.denied",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s refus\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
       "put": {
         "operationId": "locations_locataires_update",
         "description": "R\u00e9serv\u00e9 au Super Admin.",
@@ -6782,131 +7030,6 @@
             "description": ""
           }
         }
-      },
-      "delete": {
-        "operationId": "locations_locataires_destroy",
-        "description": "R\u00e9serv\u00e9 au Super Admin. **Bloqu\u00e9** si le locataire a un bail actif en cours.",
-        "summary": "D\u00e9sactiver un dossier locataire (soft delete)",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "schema": {
-              "type": "string"
-            },
-            "required": true
-          }
-        ],
-        "tags": [
-          "Locations \u2014 Locataires"
-        ],
-        "security": [
-          {
-            "jwtAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardDeletedLocataireSerializerResponse"
-                },
-                "examples": {
-                  "DossierLocataireD\u00e9sactiv\u00e9": {
-                    "value": {
-                      "success": true,
-                      "code": "RESOURCE_DELETED",
-                      "message": "Dossier locataire d\u00e9sactiv\u00e9 avec succ\u00e8s.",
-                      "messageKey": "resource.deleted.success",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": null,
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Dossier locataire d\u00e9sactiv\u00e9"
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LocataireDestroy400"
-                },
-                "examples": {
-                  "BailActif\u2014D\u00e9sactivationImpossible": {
-                    "value": {
-                      "success": false,
-                      "code": "BUSINESS_LOCATAIRE_HAS_BAIL_ACTIF",
-                      "message": "Impossible de d\u00e9sactiver : ce locataire a un bail actif en cours.",
-                      "messageKey": "business.locataire.has_bail_actif",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "BUSINESS_LOCATAIRE_HAS_BAIL_ACTIF",
-                          "message": "Cl\u00f4turez d'abord le bail avant de d\u00e9sactiver le dossier.",
-                          "messageKey": "business.locataire.has_bail_actif",
-                          "details": {
-                            "locataire_id": "uuid-loc-1",
-                            "bail_actif_id": "uuid-bail-1"
-                          }
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Bail actif \u2014 d\u00e9sactivation impossible"
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LocataireDestroy403"
-                },
-                "examples": {
-                  "Acc\u00e8sRefus\u00e9": {
-                    "value": {
-                      "success": false,
-                      "code": "PERMISSION_DENIED",
-                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
-                      "messageKey": "permission.denied",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "PERMISSION_DENIED",
-                          "message": "You do not have permission to perform this action.",
-                          "messageKey": "permission.denied",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Acc\u00e8s refus\u00e9"
-                  }
-                }
-              }
-            },
-            "description": ""
-          }
-        }
       }
     },
     "/api/locations/baux/mon-bail/": {
@@ -7032,6 +7155,149 @@
       }
     },
     "/api/locations/baux/": {
+      "post": {
+        "operationId": "locations_baux_create",
+        "description": "R\u00e9serv\u00e9 au Super Admin.\n\n**Effets automatiques :** le bien passe en statut `loue` d\u00e8s la cr\u00e9ation. Un seul bail actif est possible par bien simultan\u00e9ment.",
+        "summary": "Cr\u00e9er un bail",
+        "tags": [
+          "Locations \u2014 Baux"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BailCreateRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/BailCreateRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/BailCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardBailDetailSerializerResponse"
+                },
+                "examples": {
+                  "BailCr\u00e9\u00e9": {
+                    "value": {
+                      "success": true,
+                      "code": "BAIL_CREATED",
+                      "message": "Bail cr\u00e9\u00e9 avec succ\u00e8s.",
+                      "messageKey": "bail.created.success",
+                      "data": {
+                        "id": "uuid-bail-1",
+                        "locataire": "uuid-loc-1",
+                        "bien": "uuid-bien-1",
+                        "date_entree": "2025-01-01",
+                        "date_sortie": null,
+                        "loyer_mensuel": "150000.00",
+                        "depot_garantie": "300000.00",
+                        "date_revision": "2026-01-01",
+                        "actif": true,
+                        "created_at": "2026-03-10T08:01:30.942886Z"
+                      },
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Bail cr\u00e9\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BailCreate400"
+                },
+                "examples": {
+                  "BienAD\u00e9j\u00e0UnBailActif": {
+                    "value": {
+                      "success": false,
+                      "code": "BUSINESS_BAIL_ACTIF_EXISTS",
+                      "message": "Ce bien a d\u00e9j\u00e0 un bail actif en cours.",
+                      "messageKey": "business.bail_actif.exists",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": "bien",
+                          "code": "BUSINESS_BAIL_ACTIF_EXISTS",
+                          "message": "Ce bien a d\u00e9j\u00e0 un bail actif en cours.",
+                          "messageKey": "business.bail_actif.exists",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Bien a d\u00e9j\u00e0 un bail actif"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BailCreate403"
+                },
+                "examples": {
+                  "Acc\u00e8sRefus\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "PERMISSION_DENIED",
+                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
+                      "messageKey": "permission.denied",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "PERMISSION_DENIED",
+                          "message": "You do not have permission to perform this action.",
+                          "messageKey": "permission.denied",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s refus\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
       "get": {
         "operationId": "locations_baux_retrieve",
         "description": "Le propri\u00e9taire voit les baux de ses locataires. L'admin voit tout.\n\nParam\u00e8tre optionnel `?actif=true` ou `?actif=false` pour filtrer.",
@@ -7161,149 +7427,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/BailList403"
-                },
-                "examples": {
-                  "Acc\u00e8sRefus\u00e9": {
-                    "value": {
-                      "success": false,
-                      "code": "PERMISSION_DENIED",
-                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
-                      "messageKey": "permission.denied",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "PERMISSION_DENIED",
-                          "message": "You do not have permission to perform this action.",
-                          "messageKey": "permission.denied",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Acc\u00e8s refus\u00e9"
-                  }
-                }
-              }
-            },
-            "description": ""
-          }
-        }
-      },
-      "post": {
-        "operationId": "locations_baux_create",
-        "description": "R\u00e9serv\u00e9 au Super Admin.\n\n**Effets automatiques :** le bien passe en statut `loue` d\u00e8s la cr\u00e9ation. Un seul bail actif est possible par bien simultan\u00e9ment.",
-        "summary": "Cr\u00e9er un bail",
-        "tags": [
-          "Locations \u2014 Baux"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/BailCreateRequest"
-              }
-            },
-            "application/x-www-form-urlencoded": {
-              "schema": {
-                "$ref": "#/components/schemas/BailCreateRequest"
-              }
-            },
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/BailCreateRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "security": [
-          {
-            "jwtAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardBailDetailSerializerResponse"
-                },
-                "examples": {
-                  "BailCr\u00e9\u00e9": {
-                    "value": {
-                      "success": true,
-                      "code": "BAIL_CREATED",
-                      "message": "Bail cr\u00e9\u00e9 avec succ\u00e8s.",
-                      "messageKey": "bail.created.success",
-                      "data": {
-                        "id": "uuid-bail-1",
-                        "locataire": "uuid-loc-1",
-                        "bien": "uuid-bien-1",
-                        "date_entree": "2025-01-01",
-                        "date_sortie": null,
-                        "loyer_mensuel": "150000.00",
-                        "depot_garantie": "300000.00",
-                        "date_revision": "2026-01-01",
-                        "actif": true,
-                        "created_at": "2026-03-10T08:01:30.942886Z"
-                      },
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": null,
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Bail cr\u00e9\u00e9"
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BailCreate400"
-                },
-                "examples": {
-                  "BienAD\u00e9j\u00e0UnBailActif": {
-                    "value": {
-                      "success": false,
-                      "code": "BUSINESS_BAIL_ACTIF_EXISTS",
-                      "message": "Ce bien a d\u00e9j\u00e0 un bail actif en cours.",
-                      "messageKey": "business.bail_actif.exists",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": "bien",
-                          "code": "BUSINESS_BAIL_ACTIF_EXISTS",
-                          "message": "Ce bien a d\u00e9j\u00e0 un bail actif en cours.",
-                          "messageKey": "business.bail_actif.exists",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Bien a d\u00e9j\u00e0 un bail actif"
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/BailCreate403"
                 },
                 "examples": {
                   "Acc\u00e8sRefus\u00e9": {
@@ -8358,212 +8481,6 @@
       }
     },
     "/api/comptabilite/paiements/": {
-      "get": {
-        "operationId": "comptabilite_paiements_retrieve",
-        "description": "Propri\u00e9taire : ses paiements uniquement (via bail__locataire__proprietaire). Super Admin : tous les paiements.",
-        "summary": "Lister les paiements",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "bail_id",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Filtrer par bail (UUID)"
-          },
-          {
-            "in": "query",
-            "name": "mois",
-            "schema": {
-              "type": "string"
-            },
-            "description": "Mois concern\u00e9 (YYYY-MM)"
-          },
-          {
-            "in": "query",
-            "name": "page",
-            "schema": {
-              "type": "integer"
-            },
-            "description": "Num\u00e9ro de page"
-          },
-          {
-            "in": "query",
-            "name": "page_size",
-            "schema": {
-              "type": "integer"
-            },
-            "description": "\u00c9l\u00e9ments par page (max 100)"
-          },
-          {
-            "in": "query",
-            "name": "source",
-            "schema": {
-              "type": "string"
-            },
-            "description": "manuel | mixx_by_yas | moov_money | carte_bancaire"
-          },
-          {
-            "in": "query",
-            "name": "statut",
-            "schema": {
-              "type": "string"
-            },
-            "description": "paye | en_retard | impaye"
-          }
-        ],
-        "tags": [
-          "Comptabilit\u00e9 \u2014 Paiements"
-        ],
-        "security": [
-          {
-            "jwtAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardPaiementListSerializerResponse"
-                },
-                "examples": {
-                  "ListePaiementsR\u00e9cup\u00e9r\u00e9e": {
-                    "value": {
-                      "success": true,
-                      "code": "LIST_RETRIEVED",
-                      "message": "Liste r\u00e9cup\u00e9r\u00e9e avec succ\u00e8s.",
-                      "messageKey": "resource.list.retrieved",
-                      "data": [
-                        {
-                          "id": "550e8400-e29b-41d4-a716-446655440000",
-                          "intitule": "Loyer mars 2026",
-                          "montant": "450.00",
-                          "date_paiement": "2026-03-05",
-                          "mois_concerne": "2026-03-01",
-                          "statut": "paye",
-                          "source_paiement": "manuel",
-                          "bail_id": "660e8400-e29b-41d4-a716-446655440001"
-                        }
-                      ],
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": null,
-                      "pagination": {
-                        "current_page": 1,
-                        "total_pages": 1,
-                        "total_count": 1,
-                        "page_size": 20,
-                        "next_page": null,
-                        "previous_page": null,
-                        "has_next": false,
-                        "has_previous": false
-                      },
-                      "userContext": null
-                    },
-                    "summary": "Liste paiements r\u00e9cup\u00e9r\u00e9e"
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaiementList401"
-                },
-                "examples": {
-                  "BearerTokenAbsent": {
-                    "value": {
-                      "success": false,
-                      "code": "AUTH_TOKEN_MISSING",
-                      "message": "Authentification requise.",
-                      "messageKey": "auth.token.missing",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "AUTH_TOKEN_MISSING",
-                          "message": "Authentication credentials were not provided.",
-                          "messageKey": "auth.token.missing",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Bearer token absent",
-                    "description": "Le header Authorization est absent."
-                  },
-                  "TokenInvalide": {
-                    "value": {
-                      "success": false,
-                      "code": "AUTH_TOKEN_INVALID",
-                      "message": "Token invalide.",
-                      "messageKey": "auth.token.invalid",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "AUTH_TOKEN_INVALID",
-                          "message": "Given token not valid for any token type.",
-                          "messageKey": "auth.token.invalid",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Token invalide",
-                    "description": "Le token soumis est invalide ou malform\u00e9."
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "500": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PaiementList500"
-                },
-                "examples": {
-                  "ErreurServeur": {
-                    "value": {
-                      "success": false,
-                      "code": "SYSTEM_INTERNAL_ERROR",
-                      "message": "Une erreur interne est survenue. Veuillez r\u00e9essayer.",
-                      "messageKey": "system.internal.error",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "SYSTEM_INTERNAL_ERROR",
-                          "message": "Une erreur interne est survenue.",
-                          "messageKey": "system.internal.error",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Erreur serveur"
-                  }
-                }
-              }
-            },
-            "description": ""
-          }
-        }
-      },
       "post": {
         "operationId": "comptabilite_paiements_create",
         "description": "Propri\u00e9taire ou Super Admin. source_paiement forc\u00e9 \u00e0 'manuel' c\u00f4t\u00e9 backend. D\u00e9clenche la g\u00e9n\u00e9ration de quittance (Module 6).",
@@ -8780,6 +8697,212 @@
             "description": ""
           }
         }
+      },
+      "get": {
+        "operationId": "comptabilite_paiements_retrieve",
+        "description": "Propri\u00e9taire : ses paiements uniquement (via bail__locataire__proprietaire). Super Admin : tous les paiements.",
+        "summary": "Lister les paiements",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "bail_id",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Filtrer par bail (UUID)"
+          },
+          {
+            "in": "query",
+            "name": "mois",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Mois concern\u00e9 (YYYY-MM)"
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Num\u00e9ro de page"
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "\u00c9l\u00e9ments par page (max 100)"
+          },
+          {
+            "in": "query",
+            "name": "source",
+            "schema": {
+              "type": "string"
+            },
+            "description": "manuel | mixx_by_yas | moov_money | carte_bancaire"
+          },
+          {
+            "in": "query",
+            "name": "statut",
+            "schema": {
+              "type": "string"
+            },
+            "description": "paye | en_retard | impaye"
+          }
+        ],
+        "tags": [
+          "Comptabilit\u00e9 \u2014 Paiements"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardPaiementListSerializerResponse"
+                },
+                "examples": {
+                  "ListePaiementsR\u00e9cup\u00e9r\u00e9e": {
+                    "value": {
+                      "success": true,
+                      "code": "LIST_RETRIEVED",
+                      "message": "Liste r\u00e9cup\u00e9r\u00e9e avec succ\u00e8s.",
+                      "messageKey": "resource.list.retrieved",
+                      "data": [
+                        {
+                          "id": "550e8400-e29b-41d4-a716-446655440000",
+                          "intitule": "Loyer mars 2026",
+                          "montant": "450.00",
+                          "date_paiement": "2026-03-05",
+                          "mois_concerne": "2026-03-01",
+                          "statut": "paye",
+                          "source_paiement": "manuel",
+                          "bail_id": "660e8400-e29b-41d4-a716-446655440001"
+                        }
+                      ],
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": null,
+                      "pagination": {
+                        "current_page": 1,
+                        "total_pages": 1,
+                        "total_count": 1,
+                        "page_size": 20,
+                        "next_page": null,
+                        "previous_page": null,
+                        "has_next": false,
+                        "has_previous": false
+                      },
+                      "userContext": null
+                    },
+                    "summary": "Liste paiements r\u00e9cup\u00e9r\u00e9e"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaiementList401"
+                },
+                "examples": {
+                  "BearerTokenAbsent": {
+                    "value": {
+                      "success": false,
+                      "code": "AUTH_TOKEN_MISSING",
+                      "message": "Authentification requise.",
+                      "messageKey": "auth.token.missing",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "AUTH_TOKEN_MISSING",
+                          "message": "Authentication credentials were not provided.",
+                          "messageKey": "auth.token.missing",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Bearer token absent",
+                    "description": "Le header Authorization est absent."
+                  },
+                  "TokenInvalide": {
+                    "value": {
+                      "success": false,
+                      "code": "AUTH_TOKEN_INVALID",
+                      "message": "Token invalide.",
+                      "messageKey": "auth.token.invalid",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "AUTH_TOKEN_INVALID",
+                          "message": "Given token not valid for any token type.",
+                          "messageKey": "auth.token.invalid",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Token invalide",
+                    "description": "Le token soumis est invalide ou malform\u00e9."
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaiementList500"
+                },
+                "examples": {
+                  "ErreurServeur": {
+                    "value": {
+                      "success": false,
+                      "code": "SYSTEM_INTERNAL_ERROR",
+                      "message": "Une erreur interne est survenue. Veuillez r\u00e9essayer.",
+                      "messageKey": "system.internal.error",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "SYSTEM_INTERNAL_ERROR",
+                          "message": "Une erreur interne est survenue.",
+                          "messageKey": "system.internal.error",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Erreur serveur"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
       }
     },
     "/api/comptabilite/paiements/historique/{bail_id}/": {
@@ -8909,6 +9032,110 @@
       }
     },
     "/api/comptabilite/paiements/{id}/": {
+      "get": {
+        "operationId": "comptabilite_paiements_retrieve_2",
+        "description": "Accessible au propri\u00e9taire (son paiement), locataire (son bail) et Super Admin.",
+        "summary": "D\u00e9tail d'un paiement",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "tags": [
+          "Comptabilit\u00e9 \u2014 Paiements"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardPaiementDetailSerializerResponse"
+                },
+                "examples": {
+                  "PaiementTrouv\u00e9": {
+                    "value": {
+                      "success": true,
+                      "code": "RESOURCE_FOUND",
+                      "message": "Paiement r\u00e9cup\u00e9r\u00e9 avec succ\u00e8s.",
+                      "messageKey": "resource.found.success",
+                      "data": {
+                        "id": "550e8400-e29b-41d4-a716-446655440000",
+                        "intitule": "Loyer mars 2026",
+                        "montant": "450.00",
+                        "date_paiement": "2026-03-05",
+                        "mois_concerne": "2026-03-01",
+                        "statut": "paye",
+                        "source_paiement": "mixx_by_yas",
+                        "transaction_ref": "IMD-2026-AB12",
+                        "bail_detail": {
+                          "id": "660e8400-e29b-41d4-a716-446655440001",
+                          "loyer_mensuel": "450.00",
+                          "locataire_nom": "Jean Dupont",
+                          "bien_adresse": "12 rue des Palmiers, Lom\u00e9"
+                        },
+                        "created_at": "2026-03-10T08:01:30.942886Z"
+                      },
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Paiement trouv\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaiementRetrieve404"
+                },
+                "examples": {
+                  "RessourceIntrouvable": {
+                    "value": {
+                      "success": false,
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "Ressource introuvable.",
+                      "messageKey": "resource.not_found",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "RESOURCE_NOT_FOUND",
+                          "message": "Not found.",
+                          "messageKey": "resource.not_found",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Ressource introuvable"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
       "patch": {
         "operationId": "comptabilite_paiements_partial_update",
         "description": "R\u00e9serv\u00e9 au Super Admin. Seul le champ statut est modifiable.",
@@ -9051,24 +9278,36 @@
             "description": ""
           }
         }
-      },
-      "get": {
-        "operationId": "comptabilite_paiements_retrieve_2",
-        "description": "Accessible au propri\u00e9taire (son paiement), locataire (son bail) et Super Admin.",
-        "summary": "D\u00e9tail d'un paiement",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "schema": {
-              "type": "string"
-            },
-            "required": true
-          }
-        ],
+      }
+    },
+    "/api/comptabilite/depenses/": {
+      "post": {
+        "operationId": "comptabilite_depenses_create",
+        "description": "Propri\u00e9taire (ses biens uniquement) ou Super Admin.",
+        "summary": "Cr\u00e9er une d\u00e9pense",
         "tags": [
-          "Comptabilit\u00e9 \u2014 Paiements"
+          "Comptabilit\u00e9 \u2014 D\u00e9penses"
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DepenseCreateRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/DepenseCreateRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/DepenseCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "security": [
           {
             "jwtAuth": []
@@ -9078,34 +9317,28 @@
           }
         ],
         "responses": {
-          "200": {
+          "201": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/StandardPaiementDetailSerializerResponse"
+                  "$ref": "#/components/schemas/StandardDepenseDetailSerializerResponse"
                 },
                 "examples": {
-                  "PaiementTrouv\u00e9": {
+                  "D\u00e9penseCr\u00e9\u00e9e": {
                     "value": {
                       "success": true,
-                      "code": "RESOURCE_FOUND",
-                      "message": "Paiement r\u00e9cup\u00e9r\u00e9 avec succ\u00e8s.",
-                      "messageKey": "resource.found.success",
+                      "code": "RESOURCE_CREATED",
+                      "message": "D\u00e9pense enregistr\u00e9e avec succ\u00e8s.",
+                      "messageKey": "resource.created.success",
                       "data": {
-                        "id": "550e8400-e29b-41d4-a716-446655440000",
-                        "intitule": "Loyer mars 2026",
-                        "montant": "450.00",
-                        "date_paiement": "2026-03-05",
-                        "mois_concerne": "2026-03-01",
-                        "statut": "paye",
-                        "source_paiement": "mixx_by_yas",
-                        "transaction_ref": "IMD-2026-AB12",
-                        "bail_detail": {
-                          "id": "660e8400-e29b-41d4-a716-446655440001",
-                          "loyer_mensuel": "450.00",
-                          "locataire_nom": "Jean Dupont",
-                          "bien_adresse": "12 rue des Palmiers, Lom\u00e9"
-                        },
+                        "id": "770e8400-e29b-41d4-a716-446655440002",
+                        "bien": "880e8400-e29b-41d4-a716-446655440003",
+                        "categorie": "travaux",
+                        "intitule": "R\u00e9paration plomberie",
+                        "montant": "150.00",
+                        "description": "Remplacement robinet salle de bain",
+                        "date_depense": "2026-03-10",
+                        "justificatif": null,
                         "created_at": "2026-03-10T08:01:30.942886Z"
                       },
                       "timestamp": "2026-03-10T08:01:30.942886Z",
@@ -9113,41 +9346,51 @@
                       "pagination": null,
                       "userContext": null
                     },
-                    "summary": "Paiement trouv\u00e9"
+                    "summary": "D\u00e9pense cr\u00e9\u00e9e"
                   }
                 }
               }
             },
             "description": ""
           },
-          "404": {
+          "400": {
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PaiementRetrieve404"
+                  "$ref": "#/components/schemas/DepenseCreate400"
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepenseCreate403"
                 },
                 "examples": {
-                  "RessourceIntrouvable": {
+                  "Acc\u00e8sRefus\u00e9": {
                     "value": {
                       "success": false,
-                      "code": "RESOURCE_NOT_FOUND",
-                      "message": "Ressource introuvable.",
-                      "messageKey": "resource.not_found",
+                      "code": "PERMISSION_DENIED",
+                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
+                      "messageKey": "permission.denied",
                       "data": null,
                       "timestamp": "2026-03-10T08:01:30.942886Z",
                       "errors": [
                         {
                           "field": null,
-                          "code": "RESOURCE_NOT_FOUND",
-                          "message": "Not found.",
-                          "messageKey": "resource.not_found",
+                          "code": "PERMISSION_DENIED",
+                          "message": "You do not have permission to perform this action.",
+                          "messageKey": "permission.denied",
                           "details": null
                         }
                       ],
                       "pagination": null,
                       "userContext": null
                     },
-                    "summary": "Ressource introuvable"
+                    "summary": "Acc\u00e8s refus\u00e9"
                   }
                 }
               }
@@ -9155,9 +9398,7 @@
             "description": ""
           }
         }
-      }
-    },
-    "/api/comptabilite/depenses/": {
+      },
       "get": {
         "operationId": "comptabilite_depenses_retrieve",
         "description": "Propri\u00e9taire : ses d\u00e9penses uniquement. Super Admin : toutes.",
@@ -9304,248 +9545,12 @@
             "description": ""
           }
         }
-      },
-      "post": {
-        "operationId": "comptabilite_depenses_create",
-        "description": "R\u00e9serv\u00e9 au Super Admin.",
-        "summary": "Cr\u00e9er une d\u00e9pense",
-        "tags": [
-          "Comptabilit\u00e9 \u2014 D\u00e9penses"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DepenseCreateRequest"
-              }
-            },
-            "application/x-www-form-urlencoded": {
-              "schema": {
-                "$ref": "#/components/schemas/DepenseCreateRequest"
-              }
-            },
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/DepenseCreateRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "security": [
-          {
-            "jwtAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "201": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardDepenseDetailSerializerResponse"
-                },
-                "examples": {
-                  "D\u00e9penseCr\u00e9\u00e9e": {
-                    "value": {
-                      "success": true,
-                      "code": "RESOURCE_CREATED",
-                      "message": "D\u00e9pense enregistr\u00e9e avec succ\u00e8s.",
-                      "messageKey": "resource.created.success",
-                      "data": {
-                        "id": "770e8400-e29b-41d4-a716-446655440002",
-                        "bien": "880e8400-e29b-41d4-a716-446655440003",
-                        "categorie": "travaux",
-                        "intitule": "R\u00e9paration plomberie",
-                        "montant": "150.00",
-                        "description": "Remplacement robinet salle de bain",
-                        "date_depense": "2026-03-10",
-                        "justificatif": null,
-                        "created_at": "2026-03-10T08:01:30.942886Z"
-                      },
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": null,
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "D\u00e9pense cr\u00e9\u00e9e"
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DepenseCreate400"
-                }
-              }
-            },
-            "description": ""
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DepenseCreate403"
-                },
-                "examples": {
-                  "Acc\u00e8sRefus\u00e9": {
-                    "value": {
-                      "success": false,
-                      "code": "PERMISSION_DENIED",
-                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
-                      "messageKey": "permission.denied",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "PERMISSION_DENIED",
-                          "message": "You do not have permission to perform this action.",
-                          "messageKey": "permission.denied",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Acc\u00e8s refus\u00e9"
-                  }
-                }
-              }
-            },
-            "description": ""
-          }
-        }
       }
     },
     "/api/comptabilite/depenses/{id}/": {
-      "put": {
-        "operationId": "comptabilite_depenses_update",
-        "description": "R\u00e9serv\u00e9 au Super Admin.",
-        "summary": "Modifier une d\u00e9pense",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "schema": {
-              "type": "string"
-            },
-            "required": true
-          }
-        ],
-        "tags": [
-          "Comptabilit\u00e9 \u2014 D\u00e9penses"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DepenseCreateRequest"
-              }
-            },
-            "application/x-www-form-urlencoded": {
-              "schema": {
-                "$ref": "#/components/schemas/DepenseCreateRequest"
-              }
-            },
-            "multipart/form-data": {
-              "schema": {
-                "$ref": "#/components/schemas/DepenseCreateRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "security": [
-          {
-            "jwtAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardDepenseDetailSerializerResponse"
-                },
-                "examples": {
-                  "D\u00e9penseMise\u00c0Jour": {
-                    "value": {
-                      "success": true,
-                      "code": "RESOURCE_UPDATED",
-                      "message": "D\u00e9pense mise \u00e0 jour avec succ\u00e8s.",
-                      "messageKey": "resource.updated.success",
-                      "data": {
-                        "id": "770e8400-e29b-41d4-a716-446655440002",
-                        "bien": "880e8400-e29b-41d4-a716-446655440003",
-                        "categorie": "taxe",
-                        "intitule": "Taxe fonci\u00e8re 2026",
-                        "montant": "300.00",
-                        "description": "",
-                        "date_depense": "2026-01-15",
-                        "justificatif": null,
-                        "created_at": "2026-03-10T08:01:30.942886Z"
-                      },
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": null,
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "D\u00e9pense mise \u00e0 jour"
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/DepenseUpdate403"
-                },
-                "examples": {
-                  "Acc\u00e8sRefus\u00e9": {
-                    "value": {
-                      "success": false,
-                      "code": "PERMISSION_DENIED",
-                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
-                      "messageKey": "permission.denied",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "PERMISSION_DENIED",
-                          "message": "You do not have permission to perform this action.",
-                          "messageKey": "permission.denied",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Acc\u00e8s refus\u00e9"
-                  }
-                }
-              }
-            },
-            "description": ""
-          }
-        }
-      },
       "delete": {
         "operationId": "comptabilite_depenses_destroy",
-        "description": "R\u00e9serv\u00e9 au Super Admin. Met is_deleted = True. Retourne HTTP 200.",
+        "description": "Propri\u00e9taire (sa d\u00e9pense) ou Super Admin. Met is_deleted = True. Retourne HTTP 200.",
         "summary": "Supprimer une d\u00e9pense (soft delete)",
         "parameters": [
           {
@@ -9657,6 +9662,124 @@
                       "userContext": null
                     },
                     "summary": "Ressource introuvable"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
+      "put": {
+        "operationId": "comptabilite_depenses_update",
+        "description": "Propri\u00e9taire (sa d\u00e9pense) ou Super Admin.",
+        "summary": "Modifier une d\u00e9pense",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "tags": [
+          "Comptabilit\u00e9 \u2014 D\u00e9penses"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DepenseCreateRequest"
+              }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "$ref": "#/components/schemas/DepenseCreateRequest"
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/DepenseCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardDepenseDetailSerializerResponse"
+                },
+                "examples": {
+                  "D\u00e9penseMise\u00c0Jour": {
+                    "value": {
+                      "success": true,
+                      "code": "RESOURCE_UPDATED",
+                      "message": "D\u00e9pense mise \u00e0 jour avec succ\u00e8s.",
+                      "messageKey": "resource.updated.success",
+                      "data": {
+                        "id": "770e8400-e29b-41d4-a716-446655440002",
+                        "bien": "880e8400-e29b-41d4-a716-446655440003",
+                        "categorie": "taxe",
+                        "intitule": "Taxe fonci\u00e8re 2026",
+                        "montant": "300.00",
+                        "description": "",
+                        "date_depense": "2026-01-15",
+                        "justificatif": null,
+                        "created_at": "2026-03-10T08:01:30.942886Z"
+                      },
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "D\u00e9pense mise \u00e0 jour"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepenseUpdate403"
+                },
+                "examples": {
+                  "Acc\u00e8sRefus\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "PERMISSION_DENIED",
+                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
+                      "messageKey": "permission.denied",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "PERMISSION_DENIED",
+                          "message": "You do not have permission to perform this action.",
+                          "messageKey": "permission.denied",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s refus\u00e9"
                   }
                 }
               }
@@ -11696,149 +11819,6 @@
       }
     },
     "/api/visites/": {
-      "get": {
-        "operationId": "visites_retrieve",
-        "description": "Le propri\u00e9taire voit uniquement les configs de ses biens. L'admin voit toutes les configs.",
-        "summary": "Lister les configurations de visites",
-        "tags": [
-          "Visites \u2014 Configuration"
-        ],
-        "security": [
-          {
-            "jwtAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardVisiteConfigListSerializerResponse"
-                },
-                "examples": {
-                  "ListeDesConfigurations": {
-                    "value": {
-                      "success": true,
-                      "code": "LIST_RETRIEVED",
-                      "message": "Configurations de visites r\u00e9cup\u00e9r\u00e9es.",
-                      "messageKey": "resource.list.retrieved",
-                      "data": [
-                        {
-                          "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                          "bien_id": "uuid-bien",
-                          "bien_adresse": "12 Rue des Palmiers, Lom\u00e9",
-                          "prix": "5000.00",
-                          "actif": true,
-                          "nb_scenes": 3,
-                          "nb_acces_valides": 12,
-                          "created_at": "2026-03-19T10:00:00.000000Z"
-                        },
-                        {
-                          "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                          "bien_id": "uuid-bien",
-                          "bien_adresse": "12 Rue des Palmiers, Lom\u00e9",
-                          "prix": "5000.00",
-                          "actif": false,
-                          "nb_scenes": 3,
-                          "nb_acces_valides": 0,
-                          "created_at": "2026-03-19T10:00:00.000000Z"
-                        }
-                      ],
-                      "timestamp": "2026-03-19T10:00:00.000000Z",
-                      "errors": null,
-                      "pagination": {
-                        "current_page": 1,
-                        "total_pages": 1,
-                        "total_count": 1,
-                        "page_size": 20,
-                        "has_next": false,
-                        "has_previous": false,
-                        "next_page": null,
-                        "previous_page": null
-                      },
-                      "userContext": null
-                    },
-                    "summary": "Liste des configurations"
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardVisiteConfigListSerializerResponse"
-                },
-                "examples": {
-                  "BearerTokenAbsent": {
-                    "value": {
-                      "success": false,
-                      "code": "AUTH_TOKEN_MISSING",
-                      "message": "Authentification requise.",
-                      "messageKey": "auth.token.missing",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "AUTH_TOKEN_MISSING",
-                          "message": "Authentication credentials were not provided.",
-                          "messageKey": "auth.token.missing",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Bearer token absent",
-                    "description": "Le header Authorization est absent."
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardVisiteConfigListSerializerResponse"
-                },
-                "examples": {
-                  "Acc\u00e8sRefus\u00e9": {
-                    "value": {
-                      "success": false,
-                      "code": "PERMISSION_DENIED",
-                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
-                      "messageKey": "permission.denied",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "PERMISSION_DENIED",
-                          "message": "You do not have permission to perform this action.",
-                          "messageKey": "permission.denied",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Acc\u00e8s refus\u00e9"
-                  }
-                }
-              }
-            },
-            "description": ""
-          }
-        }
-      },
       "post": {
         "operationId": "visites_create",
         "description": "R\u00e9serv\u00e9 au Super Admin. Le champ `config` doit respecter le format JSON ImmoDesk : `name`, `initialScene`, `scenes` (avec hotspots `navigate` et `info`). Un bien ne peut avoir qu'une seule configuration de visite.",
@@ -12040,6 +12020,149 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "Acc\u00e8sRefus\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "PERMISSION_DENIED",
+                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
+                      "messageKey": "permission.denied",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "PERMISSION_DENIED",
+                          "message": "You do not have permission to perform this action.",
+                          "messageKey": "permission.denied",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s refus\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
+      "get": {
+        "operationId": "visites_retrieve",
+        "description": "Le propri\u00e9taire voit uniquement les configs de ses biens. L'admin voit toutes les configs.",
+        "summary": "Lister les configurations de visites",
+        "tags": [
+          "Visites \u2014 Configuration"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigListSerializerResponse"
+                },
+                "examples": {
+                  "ListeDesConfigurations": {
+                    "value": {
+                      "success": true,
+                      "code": "LIST_RETRIEVED",
+                      "message": "Configurations de visites r\u00e9cup\u00e9r\u00e9es.",
+                      "messageKey": "resource.list.retrieved",
+                      "data": [
+                        {
+                          "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                          "bien_id": "uuid-bien",
+                          "bien_adresse": "12 Rue des Palmiers, Lom\u00e9",
+                          "prix": "5000.00",
+                          "actif": true,
+                          "nb_scenes": 3,
+                          "nb_acces_valides": 12,
+                          "created_at": "2026-03-19T10:00:00.000000Z"
+                        },
+                        {
+                          "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                          "bien_id": "uuid-bien",
+                          "bien_adresse": "12 Rue des Palmiers, Lom\u00e9",
+                          "prix": "5000.00",
+                          "actif": false,
+                          "nb_scenes": 3,
+                          "nb_acces_valides": 0,
+                          "created_at": "2026-03-19T10:00:00.000000Z"
+                        }
+                      ],
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": null,
+                      "pagination": {
+                        "current_page": 1,
+                        "total_pages": 1,
+                        "total_count": 1,
+                        "page_size": 20,
+                        "has_next": false,
+                        "has_previous": false,
+                        "next_page": null,
+                        "previous_page": null
+                      },
+                      "userContext": null
+                    },
+                    "summary": "Liste des configurations"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigListSerializerResponse"
+                },
+                "examples": {
+                  "BearerTokenAbsent": {
+                    "value": {
+                      "success": false,
+                      "code": "AUTH_TOKEN_MISSING",
+                      "message": "Authentification requise.",
+                      "messageKey": "auth.token.missing",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "AUTH_TOKEN_MISSING",
+                          "message": "Authentication credentials were not provided.",
+                          "messageKey": "auth.token.missing",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Bearer token absent",
+                    "description": "Le header Authorization est absent."
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigListSerializerResponse"
                 },
                 "examples": {
                   "Acc\u00e8sRefus\u00e9": {
@@ -12926,6 +13049,130 @@
       }
     },
     "/api/visites/{id}/": {
+      "delete": {
+        "operationId": "visites_destroy",
+        "description": "R\u00e9serv\u00e9 au Super Admin. Positionne `actif=False` \u2014 les donn\u00e9es historiques (transactions, comptes) sont conserv\u00e9es.",
+        "summary": "D\u00e9sactiver une configuration de visite",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "A UUID string identifying this Configuration de visite virtuelle.",
+            "required": true
+          }
+        ],
+        "tags": [
+          "Visites \u2014 Configuration"
+        ],
+        "security": [
+          {
+            "jwtAuth": []
+          },
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "ConfigurationDeVisiteD\u00e9sactiv\u00e9e": {
+                    "value": {
+                      "success": true,
+                      "code": "RESOURCE_DELETED",
+                      "message": "Configuration de visite d\u00e9sactiv\u00e9e.",
+                      "messageKey": "resource.deleted.success",
+                      "data": null,
+                      "timestamp": "2026-03-19T10:00:00.000000Z",
+                      "errors": null,
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Configuration de visite d\u00e9sactiv\u00e9e"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "Acc\u00e8sRefus\u00e9": {
+                    "value": {
+                      "success": false,
+                      "code": "PERMISSION_DENIED",
+                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
+                      "messageKey": "permission.denied",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "PERMISSION_DENIED",
+                          "message": "You do not have permission to perform this action.",
+                          "messageKey": "permission.denied",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Acc\u00e8s refus\u00e9"
+                  }
+                }
+              }
+            },
+            "description": ""
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
+                },
+                "examples": {
+                  "RessourceIntrouvable": {
+                    "value": {
+                      "success": false,
+                      "code": "RESOURCE_NOT_FOUND",
+                      "message": "Ressource introuvable.",
+                      "messageKey": "resource.not_found",
+                      "data": null,
+                      "timestamp": "2026-03-10T08:01:30.942886Z",
+                      "errors": [
+                        {
+                          "field": null,
+                          "code": "RESOURCE_NOT_FOUND",
+                          "message": "Not found.",
+                          "messageKey": "resource.not_found",
+                          "details": null
+                        }
+                      ],
+                      "pagination": null,
+                      "userContext": null
+                    },
+                    "summary": "Ressource introuvable"
+                  }
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
       "put": {
         "operationId": "visites_update",
         "description": "R\u00e9serv\u00e9 au Super Admin. Permet de mettre \u00e0 jour le JSON de la visite, le prix ou le statut actif/inactif.",
@@ -13089,130 +13336,6 @@
                       "userContext": null
                     },
                     "summary": "Champ requis manquant"
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
-                },
-                "examples": {
-                  "Acc\u00e8sRefus\u00e9": {
-                    "value": {
-                      "success": false,
-                      "code": "PERMISSION_DENIED",
-                      "message": "Vous n'avez pas les droits pour effectuer cette action.",
-                      "messageKey": "permission.denied",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "PERMISSION_DENIED",
-                          "message": "You do not have permission to perform this action.",
-                          "messageKey": "permission.denied",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Acc\u00e8s refus\u00e9"
-                  }
-                }
-              }
-            },
-            "description": ""
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
-                },
-                "examples": {
-                  "RessourceIntrouvable": {
-                    "value": {
-                      "success": false,
-                      "code": "RESOURCE_NOT_FOUND",
-                      "message": "Ressource introuvable.",
-                      "messageKey": "resource.not_found",
-                      "data": null,
-                      "timestamp": "2026-03-10T08:01:30.942886Z",
-                      "errors": [
-                        {
-                          "field": null,
-                          "code": "RESOURCE_NOT_FOUND",
-                          "message": "Not found.",
-                          "messageKey": "resource.not_found",
-                          "details": null
-                        }
-                      ],
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Ressource introuvable"
-                  }
-                }
-              }
-            },
-            "description": ""
-          }
-        }
-      },
-      "delete": {
-        "operationId": "visites_destroy",
-        "description": "R\u00e9serv\u00e9 au Super Admin. Positionne `actif=False` \u2014 les donn\u00e9es historiques (transactions, comptes) sont conserv\u00e9es.",
-        "summary": "D\u00e9sactiver une configuration de visite",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "id",
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "description": "A UUID string identifying this Configuration de visite virtuelle.",
-            "required": true
-          }
-        ],
-        "tags": [
-          "Visites \u2014 Configuration"
-        ],
-        "security": [
-          {
-            "jwtAuth": []
-          },
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StandardVisiteConfigDetailSerializerResponse"
-                },
-                "examples": {
-                  "ConfigurationDeVisiteD\u00e9sactiv\u00e9e": {
-                    "value": {
-                      "success": true,
-                      "code": "RESOURCE_DELETED",
-                      "message": "Configuration de visite d\u00e9sactiv\u00e9e.",
-                      "messageKey": "resource.deleted.success",
-                      "data": null,
-                      "timestamp": "2026-03-19T10:00:00.000000Z",
-                      "errors": null,
-                      "pagination": null,
-                      "userContext": null
-                    },
-                    "summary": "Configuration de visite d\u00e9sactiv\u00e9e"
                   }
                 }
               }
@@ -20295,6 +20418,16 @@
             "type": "string",
             "readOnly": true
           },
+          "loyer_hc": {
+            "type": "string",
+            "format": "decimal",
+            "pattern": "^-?\\d{0,10}(?:\\.\\d{0,2})?$"
+          },
+          "charges": {
+            "type": "string",
+            "format": "decimal",
+            "pattern": "^-?\\d{0,8}(?:\\.\\d{0,2})?$"
+          },
           "note_moyenne": {
             "type": "string",
             "format": "decimal",
@@ -20376,6 +20509,7 @@
           "categorie_nom",
           "emplacement",
           "id",
+          "loyer_hc",
           "nombre_avis",
           "photo_principale"
         ]
@@ -25051,6 +25185,90 @@
           "id"
         ]
       },
+      "PhotoDelete200": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/DeletedResponse"
+          },
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "messageKey": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ErrorDetail"
+            },
+            "nullable": true
+          },
+          "userContext": {
+            "type": "object",
+            "additionalProperties": {},
+            "nullable": true
+          }
+        },
+        "required": [
+          "code",
+          "data",
+          "message",
+          "messageKey",
+          "success",
+          "timestamp"
+        ]
+      },
+      "PhotoDelete404": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "messageKey": {
+            "type": "string"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ErrorDetail"
+            },
+            "nullable": true
+          },
+          "userContext": {
+            "type": "object",
+            "additionalProperties": {},
+            "nullable": true
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "messageKey",
+          "success",
+          "timestamp"
+        ]
+      },
       "PhotosCreate201": {
         "type": "object",
         "properties": {
@@ -27527,10 +27745,7 @@
         "type": "object",
         "properties": {
           "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Categorie"
-            }
+            "$ref": "#/components/schemas/Categorie"
           },
           "success": {
             "type": "boolean"
@@ -27553,14 +27768,6 @@
             "items": {
               "$ref": "#/components/schemas/ErrorDetail"
             },
-            "nullable": true
-          },
-          "pagination": {
-            "allOf": [
-              {
-                "$ref": "#/components/schemas/Pagination"
-              }
-            ],
             "nullable": true
           },
           "userContext": {
@@ -27988,10 +28195,7 @@
         "type": "object",
         "properties": {
           "data": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/Immeuble"
-            }
+            "$ref": "#/components/schemas/Immeuble"
           },
           "success": {
             "type": "boolean"

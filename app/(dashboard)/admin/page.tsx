@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Loader2 } from 'lucide-react';
@@ -14,6 +14,7 @@ const currencyFormatter = new Intl.NumberFormat('fr-TG', {
 
 export default function AdminOverviewPage() {
   const { unreadCount } = useNotifications();
+  const [sourceFilter, setSourceFilter] = useState('all');
   const [globalStats, setGlobalStats] = useState<AdminGlobalStats | null>(null);
   const [monthlyTrend, setMonthlyTrend] = useState<AdminMonthlyPaymentTrendPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,8 +26,8 @@ export default function AdminOverviewPage() {
         setIsLoading(true);
         setError(null);
         const [globalResponse, trendResponse] = await Promise.all([
-          StatsService.getAdminGlobalStats(),
-          StatsService.getAdminMonthlyPaymentTrend(6),
+          StatsService.getAdminGlobalStats({ source: sourceFilter }),
+          StatsService.getAdminMonthlyPaymentTrend(6, sourceFilter),
         ]);
 
         if (globalResponse.success && globalResponse.data) {
@@ -88,14 +89,30 @@ export default function AdminOverviewPage() {
 
   return (
     <>
-      <div className="mb-8 flex flex-col gap-2">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">Dashboard super admin</h1>
-        <p className="text-sm text-zinc-600 sm:text-base">Administration complète de la plateforme ImmoDesk Togo.</p>
-        {unreadCount > 0 && (
-          <p className="inline-flex w-fit rounded-full bg-zinc-900 px-2.5 py-1 text-xs font-semibold text-white">
-            {unreadCount} notification{unreadCount > 1 ? 's' : ''} non lue{unreadCount > 1 ? 's' : ''}
-          </p>
-        )}
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 sm:text-3xl">Dashboard super admin</h1>
+          <p className="text-sm text-zinc-600 sm:text-base">Administration complète de la plateforme ImmoDesk Togo.</p>
+          {unreadCount > 0 && (
+            <p className="inline-flex w-fit rounded-full bg-zinc-900 px-2.5 py-1 text-xs font-semibold text-white">
+              {unreadCount} notification{unreadCount > 1 ? 's' : ''} non lue{unreadCount > 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3">
+          <label htmlFor="source-filter" className="text-sm font-medium text-zinc-700">Source :</label>
+          <select
+            id="source-filter"
+            value={sourceFilter}
+            onChange={(e) => setSourceFilter(e.target.value)}
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+          >
+            <option value="all">Tous les paiements</option>
+            <option value="manual">Paiements manuels</option>
+            <option value="auto">Paiements en ligne (Auto)</option>
+          </select>
+        </div>
       </div>
 
       <section className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">

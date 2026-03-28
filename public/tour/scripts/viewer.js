@@ -242,6 +242,55 @@ function escHtml(str) {
 }
 
 /* ══════════════════════════════════════════════════════════════════════
+   Gestion Sortie / Confirmation
+   ══════════════════════════════════════════════════════════════════════ */
+
+let exitIntended = false;
+
+// 1. Intercepter le bouton back du navigateur
+history.pushState({ page: 'viewer' }, '', location.href);
+
+window.addEventListener('popstate', (e) => {
+  if (exitIntended) return;
+  history.pushState({ page: 'viewer' }, '', location.href);
+  showExitConfirm();
+});
+
+// 2. Clic sur le bouton Retour (header)
+const btnReturn = document.getElementById('btn-return-link');
+if (btnReturn) {
+  btnReturn.addEventListener('click', (e) => {
+    e.preventDefault();
+    showExitConfirm();
+  });
+}
+
+// 3. Modal de confirmation
+const exitModal  = document.getElementById('exit-confirm-modal');
+const btnCancel  = document.getElementById('btn-exit-cancel');
+const btnConfirm = document.getElementById('btn-exit-confirm');
+
+function showExitConfirm() {
+  if (exitModal) exitModal.classList.add('visible');
+}
+
+function hideExitConfirm() {
+  if (exitModal) exitModal.classList.remove('visible');
+}
+
+if (btnCancel) {
+  btnCancel.addEventListener('click', hideExitConfirm);
+}
+
+if (btnConfirm) {
+  btnConfirm.addEventListener('click', () => {
+    exitIntended = true;
+    const returnUrl = sessionStorage.getItem('tour_return_url') || '/';
+    window.location.href = returnUrl;
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════════
    Démarrage
    ══════════════════════════════════════════════════════════════════════ */
 

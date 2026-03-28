@@ -172,8 +172,8 @@ export interface Bail {
   id: string;
   locataire: string;
   bien: string;
-  date_debut: string;
-  date_fin: string;
+  date_entree: string;
+  date_sortie: string;
   loyer_mensuel: number;
   charges_mensuelles: number;
   depot_garantie: number;

@@ -3,6 +3,7 @@
 import { useEffect, useState, FormEvent } from 'react';
 import { Key, Loader2, Trash2, PlusCircle, Edit2, X } from 'lucide-react';
 import { VirtualVisitService, CompteEphemere } from '@/lib/virtual-visit-service';
+import { useVirtualVisits } from '@/components/virtual-visits/VirtualVisitProvider';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -20,18 +21,37 @@ export default function VirtualAccountsPage() {
     est_actif: true
   });
 
+  const { accesses, removeAccess } = useVirtualVisits();
+
   const loadAccounts = async () => {
     try {
       setIsLoading(true);
       const res = await VirtualVisitService.getComptesEphemeres();
+      
+      let backendAccounts: CompteEphemere[] = [];
       if (res.success && res.data) {
-        setAccounts(res.data);
-      } else {
-        setError(res.message || 'Erreur lors du chargement des comptes éphémères.');
+        backendAccounts = res.data;
+      }
+
+      // Merge mock accesses from localStorage
+      const mockAccounts: CompteEphemere[] = accesses.map((acc) => ({
+        id: acc.id,
+        identifiant: acc.propertyId + ' (Simulation)',
+        mot_de_passe_clair: acc.code,
+        visite: acc.requester || 'Visiteur Inconnu',
+        date_creation: acc.createdAt,
+        date_expiration: acc.expiresAt,
+        est_actif: true,
+      }));
+
+      setAccounts([...backendAccounts, ...mockAccounts]);
+      if (!res.success && res.message) {
+        // We might just show it if backend fails completely but mock works
+        console.warn('Backend failed to load accounts:', res.message);
       }
     } catch (err) {
       console.error(err);
-      setError('Erreur serveur.');
+      setError('Erreur lors du chargement des comptes.');
     } finally {
       setIsLoading(false);
     }
@@ -39,7 +59,7 @@ export default function VirtualAccountsPage() {
 
   useEffect(() => {
     loadAccounts();
-  }, []);
+  }, [accesses]);
 
   const openEditModal = (account: CompteEphemere) => {
     setEditingAccount(account);
@@ -58,6 +78,13 @@ export default function VirtualAccountsPage() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!editingAccount) return;
+
+    // Simulation check - don't update mock accounts via API
+    if (editingAccount.identifiant.includes('(Simulation)')) {
+      alert('La modification des comptes de simulation n\'est pas encore supportée.');
+      closeModal();
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -78,6 +105,16 @@ export default function VirtualAccountsPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Voulez-vous vraiment supprimer ce compte éphémère ?')) return;
+    
+    // Check if it's a simulation account
+    const isMock = accesses.some(a => a.id === id);
+    
+    if (isMock) {
+      removeAccess(id);
+      // setAccounts will be updated via useEffect [accesses]
+      return;
+    }
+
     try {
       const res = await VirtualVisitService.deleteCompteEphemere(id);
       if (res.success || res.code === 'RESOURCE_DELETED' || (!('success' in res))) {

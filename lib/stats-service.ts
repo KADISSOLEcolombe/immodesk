@@ -209,49 +209,52 @@ export class StatsService {
     return apiClient.get<FinancialMetrics>('/stats/metriques-financieres/');
   }
 
-  static async getAdminGlobalStats(): Promise<StandardApiResponse<AdminGlobalStats>> {
-    return apiClient.get<AdminGlobalStats>('/stats/admin/global/');
+  static async getAdminGlobalStats(params?: { source?: string }): Promise<StandardApiResponse<AdminGlobalStats>> {
+    return apiClient.get<AdminGlobalStats>('/stats/admin/global/', params || {});
   }
-
+ 
   static async getAdminPaymentStats(params?: {
     date_debut?: string;
     date_fin?: string;
+    source?: string;
   }): Promise<StandardApiResponse<AdminPaymentStats>> {
     return apiClient.get<AdminPaymentStats>('/stats/admin/paiements/', params || {});
   }
-
+ 
   static async getAdminUserStats(): Promise<StandardApiResponse<AdminUserStats>> {
     return apiClient.get<AdminUserStats>('/stats/admin/utilisateurs/');
   }
-
+ 
   static async getAdminVisitStats(): Promise<StandardApiResponse<AdminVisitStats>> {
     return apiClient.get<AdminVisitStats>('/stats/admin/visites/');
   }
-
+ 
   static async getAdminSubmissionStats(): Promise<StandardApiResponse<AdminSubmissionStats>> {
     return apiClient.get<AdminSubmissionStats>('/stats/admin/soumissions/');
   }
-
+ 
   static async getAdminMonthlyPaymentTrend(
-    months: number = 6
+    months: number = 6,
+    source: string = 'all'
   ): Promise<StandardApiResponse<AdminMonthlyPaymentTrendPoint[]>> {
     const safeMonths = Number.isFinite(months) && months > 0 ? Math.floor(months) : 6;
     const currentMonthStart = new Date();
     currentMonthStart.setDate(1);
     currentMonthStart.setHours(0, 0, 0, 0);
-
+ 
     const monthStarts = Array.from({ length: safeMonths }, (_, index) => {
       const monthDate = new Date(currentMonthStart);
       monthDate.setMonth(currentMonthStart.getMonth() - (safeMonths - 1 - index));
       return monthDate;
     });
-
+ 
     const responses = await Promise.all(
       monthStarts.map(async (monthStart) => {
         const { start, end } = this.getMonthBounds(monthStart);
         const response = await this.getAdminPaymentStats({
           date_debut: this.toIsoDate(start),
           date_fin: this.toIsoDate(end),
+          source,
         });
 
         return {
